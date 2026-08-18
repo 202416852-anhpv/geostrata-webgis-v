@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import * as api from "../api";
 import { ApiError } from "../api";
+import FormError from "./FormError";
 import Icon from "./Icon";
 import type {
   Borehole,
@@ -230,12 +231,6 @@ export default function BoreholeEditor({
           </button>
         </header>
 
-        {error && (
-          <div className="error" role="alert">
-            <Icon name="alert" /> {error}
-          </div>
-        )}
-
         <div className="form-grid">
           <label>
             Công trình
@@ -406,6 +401,8 @@ export default function BoreholeEditor({
             <Icon name="alert" size={13} /> {liveError}
           </div>
         )}
+
+        <FormError message={error} />
 
         <div className="modal-footer">
           <button type="button" onClick={onClose}>

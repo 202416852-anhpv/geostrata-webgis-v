@@ -6,8 +6,10 @@ import { ApiError } from "../api";
 import { useAuth } from "../auth/AuthContext";
 import { ROLE_LABEL, type ClientConfig } from "../types";
 import Avatar, { invalidateAvatarCache } from "./Avatar";
-import PasswordInput from "./PasswordInput";
+import FormError from "./FormError";
 import Icon from "./Icon";
+import PasswordInput from "./PasswordInput";
+import { useToast } from "./Toast";
 
 const MIN_PASSWORD = 8;
 
@@ -19,6 +21,7 @@ export default function ProfilePanel({
   onClose: () => void;
 }) {
   const { user, setUser } = useAuth();
+  const toast = useToast();
   const fileInput = useRef<HTMLInputElement>(null);
 
   const [form, setForm] = useState({
@@ -29,9 +32,14 @@ export default function ProfilePanel({
     organization: user?.organization ?? "",
   });
   const [passwords, setPasswords] = useState({ current: "", next: "", confirm: "" });
-  const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+
+  // Mỗi biểu mẫu giữ lỗi riêng: lưu hồ sơ hỏng thì không được xoá mất lỗi của
+  // phần đổi mật khẩu, và ngược lại.
+  const [profileError, setProfileError] = useState<string | null>(null);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [savingPassword, setSavingPassword] = useState(false);
+  const [busyAvatar, setBusyAvatar] = useState(false);
 
   if (!user) return null;
 
@@ -39,9 +47,8 @@ export default function ProfilePanel({
 
   const saveProfile = async (event: FormEvent) => {
     event.preventDefault();
-    setError(null);
-    setNotice(null);
-    setBusy(true);
+    setProfileError(null);
+    setSavingProfile(true);
     try {
       const updated = await api.updateProfile({
         full_name: form.full_name.trim(),
@@ -51,72 +58,79 @@ export default function ProfilePanel({
         organization: form.organization.trim() || null,
       });
       setUser(updated);
-      setNotice("Đã lưu hồ sơ");
+      toast.success("Đã lưu hồ sơ");
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Không lưu được hồ sơ");
+      setProfileError(err instanceof ApiError ? err.message : "Không lưu được hồ sơ");
     } finally {
-      setBusy(false);
+      setSavingProfile(false);
     }
   };
 
   const pickAvatar = async (file: File | undefined) => {
     if (!file) return;
-    setError(null);
-    setNotice(null);
     // Chặn sớm ở trình duyệt cho phản hồi nhanh; máy chủ vẫn kiểm tra lại.
     if (file.size > (config?.max_avatar_bytes ?? 512_000)) {
-      setError(`Ảnh nặng ${Math.round(file.size / 1024)} KB, vượt giới hạn ${maxAvatarKb} KB`);
+      toast.error(`Ảnh nặng ${Math.round(file.size / 1024)} KB, vượt giới hạn ${maxAvatarKb} KB`);
+      if (fileInput.current) fileInput.current.value = "";
       return;
     }
-    setBusy(true);
+    setBusyAvatar(true);
     try {
       const updated = await api.uploadAvatar(file);
       invalidateAvatarCache(updated.id);
       setUser(updated);
-      setNotice("Đã cập nhật ảnh đại diện");
+      toast.success("Đã cập nhật ảnh đại diện");
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Không tải được ảnh lên");
+      toast.error(err instanceof ApiError ? err.message : "Không tải được ảnh lên");
     } finally {
-      setBusy(false);
+      setBusyAvatar(false);
       if (fileInput.current) fileInput.current.value = "";
     }
   };
 
   const removeAvatar = async () => {
-    setBusy(true);
+    setBusyAvatar(true);
     try {
       const updated = await api.deleteAvatar();
       invalidateAvatarCache(updated.id);
       setUser(updated);
-      setNotice("Đã xoá ảnh đại diện");
+      toast.success("Đã xoá ảnh đại diện");
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Không xoá được ảnh");
+      toast.error(err instanceof ApiError ? err.message : "Không xoá được ảnh");
     } finally {
-      setBusy(false);
+      setBusyAvatar(false);
     }
   };
 
   const savePassword = async (event: FormEvent) => {
     event.preventDefault();
+    if (!passwords.current) {
+      setPasswordError("Nhập mật khẩu hiện tại để xác nhận");
+      return;
+    }
     if (passwords.next !== passwords.confirm) {
-      setError("Hai lần nhập mật khẩu mới không khớp");
+      setPasswordError("Hai lần nhập mật khẩu mới không khớp");
       return;
     }
     if (passwords.next.length < MIN_PASSWORD) {
-      setError(`Mật khẩu mới cần ít nhất ${MIN_PASSWORD} ký tự`);
+      setPasswordError(`Mật khẩu mới cần ít nhất ${MIN_PASSWORD} ký tự`);
       return;
     }
-    setError(null);
-    setNotice(null);
-    setBusy(true);
+    if (passwords.next === passwords.current) {
+      setPasswordError("Mật khẩu mới phải khác mật khẩu hiện tại");
+      return;
+    }
+
+    setPasswordError(null);
+    setSavingPassword(true);
     try {
       await api.changePassword(passwords.current, passwords.next);
       setPasswords({ current: "", next: "", confirm: "" });
-      setNotice("Đã đổi mật khẩu. Các thiết bị khác sẽ phải đăng nhập lại.");
+      toast.success("Đã đổi mật khẩu. Các thiết bị khác sẽ phải đăng nhập lại.");
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Không đổi được mật khẩu");
+      setPasswordError(err instanceof ApiError ? err.message : "Không đổi được mật khẩu");
     } finally {
-      setBusy(false);
+      setSavingPassword(false);
     }
   };
 
@@ -132,17 +146,6 @@ export default function ProfilePanel({
           </button>
         </header>
 
-        {error && (
-          <div className="error" role="alert">
-            <Icon name="alert" /> {error}
-          </div>
-        )}
-        {notice && (
-          <div className="notice">
-            <Icon name="check" /> {notice}
-          </div>
-        )}
-
         <div className="profile-head">
           <Avatar user={user} size="lg" />
           <div className="profile-identity">
@@ -150,15 +153,19 @@ export default function ProfilePanel({
             <span className="cell-sub">@{user.username}</span>
             <span className={`role-tag role-${user.role}`}>{ROLE_LABEL[user.role]}</span>
             <div className="avatar-actions">
-              <button type="button" onClick={() => fileInput.current?.click()} disabled={busy}>
-                <Icon name="image" /> Đổi ảnh
+              <button
+                type="button"
+                onClick={() => fileInput.current?.click()}
+                disabled={busyAvatar}
+              >
+                <Icon name="image" /> {busyAvatar ? "Đang xử lý..." : "Đổi ảnh"}
               </button>
               {user.has_avatar && (
                 <button
                   type="button"
                   className="danger"
                   onClick={() => void removeAvatar()}
-                  disabled={busy}
+                  disabled={busyAvatar}
                 >
                   <Icon name="trash" /> Xoá ảnh
                 </button>
@@ -198,7 +205,11 @@ export default function ProfilePanel({
             </label>
             <label>
               Điện thoại
-              <input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+              <input
+                type="tel"
+                value={form.phone}
+                onChange={(e) => setForm({ ...form, phone: e.target.value })}
+              />
             </label>
             <label>
               Chức danh
@@ -216,9 +227,13 @@ export default function ProfilePanel({
               />
             </label>
           </div>
+
+          {/* Lỗi nằm ngay trên nút bấm đã gây ra nó, không đẩy lên đầu hộp thoại. */}
+          <FormError message={profileError} />
+
           <div className="modal-footer">
-            <button type="submit" className="primary" disabled={busy}>
-              Lưu hồ sơ
+            <button type="submit" className="primary" disabled={savingProfile}>
+              {savingProfile ? "Đang lưu..." : "Lưu hồ sơ"}
             </button>
           </div>
         </form>
@@ -249,9 +264,12 @@ export default function ProfilePanel({
             autoComplete="new-password"
             required
           />
+
+          <FormError message={passwordError} />
+
           <div className="modal-footer">
-            <button type="submit" className="primary" disabled={busy}>
-              Đổi mật khẩu
+            <button type="submit" className="primary" disabled={savingPassword}>
+              {savingPassword ? "Đang đổi..." : "Đổi mật khẩu"}
             </button>
           </div>
         </form>

@@ -13,6 +13,7 @@ import ProfilePanel from "./components/ProfilePanel";
 import ProjectManagement from "./components/ProjectManagement";
 import SearchPanel from "./components/SearchPanel";
 import ThemeToggle from "./components/ThemeToggle";
+import { ToastProvider, useToast } from "./components/Toast";
 import UserManagement from "./components/UserManagement";
 import {
   ROLE_LABEL,
@@ -27,9 +28,11 @@ const FALLBACK_RADIUS_M = 150;
 
 export default function App() {
   return (
-    <AuthProvider>
-      <Root />
-    </AuthProvider>
+    <ToastProvider>
+      <AuthProvider>
+        <Root />
+      </AuthProvider>
+    </ToastProvider>
   );
 }
 
@@ -45,6 +48,7 @@ function Root() {
 
 function Workspace() {
   const { user, logout, can } = useAuth();
+  const toast = useToast();
 
   const [config, setConfig] = useState<ClientConfig | null>(null);
   const [center, setCenter] = useState<[number, number]>(INITIAL_CENTER);
@@ -161,6 +165,7 @@ function Workspace() {
   const handleSaved = useCallback(
     async (saved: Borehole) => {
       setEditorMode(null);
+      toast.success(`Đã lưu hố khoan ${saved.code}`);
       await reloadProjects();
       // Hố khoan chưa rõ vị trí không có toạ độ để dời bản đồ tới.
       if (saved.lat !== null && saved.lng !== null) {
@@ -169,7 +174,7 @@ function Workspace() {
         await search(center[0], center[1], radiusM);
       }
     },
-    [search, radiusM, center, reloadProjects],
+    [search, radiusM, center, reloadProjects, toast],
   );
 
   return (

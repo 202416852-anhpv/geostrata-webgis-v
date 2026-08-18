@@ -14,12 +14,12 @@ type AvatarSize = "sm" | "md" | "lg";
 
 const SIZE_PX: Record<AvatarSize, number> = { sm: 30, md: 40, lg: 96 };
 
-/** Bảng màu cho ảnh chữ cái — đủ tương phản với chữ trắng. */
+/** Bảng màu cho ảnh chữ cái. Mọi màu đều đạt >= 4.5:1 với chữ trắng. */
 const FALLBACK_COLORS = [
   "#0056b3",
   "#c0392b",
   "#1e7e34",
-  "#b8860b",
+  "#966d09",
   "#7048e8",
   "#0b7285",
   "#d6336c",

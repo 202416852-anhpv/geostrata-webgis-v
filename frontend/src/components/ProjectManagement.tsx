@@ -4,7 +4,10 @@ import { useCallback, useEffect, useState, type FormEvent } from "react";
 import * as api from "../api";
 import { ApiError } from "../api";
 import type { Project, Vertex } from "../types";
+import ConfirmDialog from "./ConfirmDialog";
+import FormError from "./FormError";
 import Icon from "./Icon";
+import { useToast } from "./Toast";
 
 interface DraftVertex {
   lat: string;
@@ -35,10 +38,13 @@ export default function ProjectManagement({
   onChanged,
   onClose,
 }: ProjectManagementProps) {
+  const toast = useToast();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  // Lỗi của biểu mẫu để riêng và hiện ngay cạnh nút Lưu, không đẩy lên đầu.
+  const [formError, setFormError] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<Project | null>(null);
 
   const [editing, setEditing] = useState<Project | null>(null);
   const [creating, setCreating] = useState(false);
@@ -50,9 +56,9 @@ export default function ProjectManagement({
     setLoading(true);
     try {
       setProjects(await api.fetchProjects());
-      setError(null);
+      setLoadError(null);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Không tải được danh sách công trình");
+      setLoadError(err instanceof ApiError ? err.message : "Không tải được danh sách công trình");
     } finally {
       setLoading(false);
     }
@@ -67,7 +73,7 @@ export default function ProjectManagement({
     setCreating(true);
     setForm({ ...EMPTY_FORM });
     setVertices([]);
-    setNotice(null);
+    setFormError(null);
   };
 
   const openEdit = (project: Project) => {
@@ -81,7 +87,7 @@ export default function ProjectManagement({
       scale_description: project.scale_description ?? "",
     });
     setVertices(project.vertices.map((v) => ({ lat: String(v.lat), lng: String(v.lng) })));
-    setNotice(null);
+    setFormError(null);
   };
 
   const closeForm = () => {
@@ -118,7 +124,7 @@ export default function ProjectManagement({
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
     if (!form.name.trim()) {
-      setError("Tên công trình không được để trống");
+      setFormError("Tên công trình không được để trống");
       return;
     }
 
@@ -127,11 +133,11 @@ export default function ProjectManagement({
       const lat = Number(vertex.lat);
       const lng = Number(vertex.lng);
       if (!Number.isFinite(lat) || Math.abs(lat) > 90) {
-        setError(`Điểm ${index + 1}: vĩ độ không hợp lệ`);
+        setFormError(`Điểm ${index + 1}: vĩ độ không hợp lệ`);
         return;
       }
       if (!Number.isFinite(lng) || Math.abs(lng) > 180) {
-        setError(`Điểm ${index + 1}: kinh độ không hợp lệ`);
+        setFormError(`Điểm ${index + 1}: kinh độ không hợp lệ`);
         return;
       }
       parsed.push({ lat, lng });
@@ -145,7 +151,7 @@ export default function ProjectManagement({
       vertices: parsed,
     };
 
-    setError(null);
+    setFormError(null);
     setBusy(true);
     try {
       const saved = editing
@@ -154,13 +160,13 @@ export default function ProjectManagement({
 
       // Ranh giới không dựng được thì phải nói rõ, đừng để tưởng đã lưu xong.
       if (parsed.length > 0 && !saved.has_boundary) {
-        setNotice(
+        toast.info(
           parsed.length < 3
             ? `Đã lưu ${parsed.length} điểm. Cần từ 3 điểm trở lên mới tạo được ranh giới.`
             : "Đã lưu các điểm nhưng đường bao tự cắt nhau nên chưa tạo được ranh giới. Hãy kiểm tra lại thứ tự điểm.",
         );
       } else {
-        setNotice(
+        toast.success(
           saved.has_boundary
             ? `Đã lưu công trình ${saved.code}, ranh giới ${saved.area_m2?.toLocaleString("vi-VN")} m².`
             : `Đã lưu công trình ${saved.code}.`,
@@ -170,35 +176,32 @@ export default function ProjectManagement({
       await reload();
       onChanged();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Không lưu được công trình");
+      setFormError(err instanceof ApiError ? err.message : "Không lưu được công trình");
     } finally {
       setBusy(false);
     }
   };
 
-  const removeProject = async (project: Project) => {
-    const warning =
-      project.borehole_count > 0
-        ? `Xoá công trình "${project.name}" sẽ xoá luôn ${project.borehole_count} hố khoan bên trong. Tiếp tục?`
-        : `Xoá công trình "${project.name}"?`;
-    if (!window.confirm(warning)) return;
-
+  const confirmDelete = async () => {
+    if (!pendingDelete) return;
+    const project = pendingDelete;
+    setPendingDelete(null);
     try {
       await api.deleteProject(project.id);
-      setNotice(`Đã xoá công trình ${project.code}`);
-      setError(null);
+      toast.success(`Đã xoá công trình ${project.code}`);
       await reload();
       onChanged();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Không xoá được công trình");
+      toast.error(err instanceof ApiError ? err.message : "Không xoá được công trình");
     }
   };
 
   const showForm = creating || editing !== null;
 
   return (
-    <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="modal-panel" role="dialog" aria-modal="true" aria-label="Quản lý công trình">
+    <>
+      <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
+        <div className="modal-panel" role="dialog" aria-modal="true" aria-label="Quản lý công trình">
         <header className="modal-header">
           <h2>
             <Icon name="building" size={18} /> Công trình
@@ -209,14 +212,9 @@ export default function ProjectManagement({
           </button>
         </header>
 
-        {error && (
+        {loadError && (
           <div className="error" role="alert">
-            <Icon name="alert" /> {error}
-          </div>
-        )}
-        {notice && (
-          <div className="notice">
-            <Icon name="check" /> {notice}
+            <Icon name="alert" /> {loadError}
           </div>
         )}
 
@@ -341,6 +339,8 @@ export default function ProjectManagement({
               </div>
             ))}
 
+            <FormError message={formError} />
+
             <div className="modal-footer">
               <button type="button" onClick={closeForm}>
                 Huỷ
@@ -400,7 +400,7 @@ export default function ProjectManagement({
                         <button
                           type="button"
                           className="danger"
-                          onClick={() => void removeProject(project)}
+                          onClick={() => setPendingDelete(project)}
                           title="Xoá công trình"
                         >
                           <Icon name="trash" />
@@ -413,7 +413,24 @@ export default function ProjectManagement({
             </tbody>
           </table>
         )}
+        </div>
       </div>
-    </div>
+
+      {pendingDelete && (
+        <ConfirmDialog
+          title="Xoá công trình"
+          message={`Xoá công trình "${pendingDelete.name}" (${pendingDelete.code})?`}
+          detail={
+            pendingDelete.borehole_count > 0
+              ? `${pendingDelete.borehole_count} hố khoan bên trong sẽ bị xoá theo và không khôi phục được.`
+              : "Công trình này chưa có hố khoan nào."
+          }
+          confirmLabel="Xoá công trình"
+          destructive
+          onConfirm={() => void confirmDelete()}
+          onCancel={() => setPendingDelete(null)}
+        />
+      )}
+    </>
   );
 }

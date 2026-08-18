@@ -5,6 +5,7 @@ import * as api from "../api";
 import { ApiError } from "../api";
 import { useAuth } from "../auth/AuthContext";
 import PasswordInput from "./PasswordInput";
+import { useToast } from "./Toast";
 import Icon from "./Icon";
 
 const MIN_PASSWORD = 8;
@@ -13,6 +14,7 @@ type Tab = "login" | "register";
 
 export default function LoginPage() {
   const { login, register } = useAuth();
+  const toast = useToast();
   const [tab, setTab] = useState<Tab>("login");
   const [allowRegister, setAllowRegister] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -92,6 +94,7 @@ export default function LoginPage() {
         organization: form.organization.trim() || null,
         password: form.password,
       });
+      toast.success(`Chào ${form.full_name.trim()}, tài khoản đã được tạo.`);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Đăng ký thất bại");
     } finally {

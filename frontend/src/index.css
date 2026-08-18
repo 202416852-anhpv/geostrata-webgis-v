@@ -190,6 +190,7 @@ textarea {
    Nút
    ========================================================================== */
 
+/* Danh sách selector dùng lại cho mọi nút dạng khối. */
 .btn,
 .action-bar button,
 .modal-toolbar button,
@@ -222,22 +223,29 @@ textarea {
     color var(--duration-fast) var(--ease-out);
 }
 
-.action-bar button:hover:not(:disabled),
-.modal-toolbar button:hover:not(:disabled),
-.modal-footer button:hover:not(:disabled),
-.filter-bar button:hover:not(:disabled),
-.cell-actions button:hover:not(:disabled),
-.user-card-actions button:hover:not(:disabled),
-.avatar-actions button:hover:not(:disabled),
-.layer-row button:hover:not(:disabled),
-.vertex-row button:hover:not(:disabled),
-.modal-section-title button:hover:not(:disabled) {
+/* Hover của nút trung tính PHẢI loại trừ .primary và .danger.
+   Không loại trừ thì nó cũng khớp với nút biến thể và ghi đè `color`, khiến nút
+   chính khi hover thành chữ xanh trên nền xanh — gần như không đọc được. */
+.action-bar button:not(.primary):not(.danger):hover:not(:disabled),
+.modal-toolbar button:not(.primary):not(.danger):hover:not(:disabled),
+.modal-footer button:not(.primary):not(.danger):hover:not(:disabled),
+.filter-bar button:not(.primary):not(.danger):hover:not(:disabled),
+.cell-actions button:not(.primary):not(.danger):hover:not(:disabled),
+.user-card-actions button:not(.primary):not(.danger):hover:not(:disabled),
+.avatar-actions button:not(.primary):not(.danger):hover:not(:disabled),
+.layer-row button:not(.primary):not(.danger):hover:not(:disabled),
+.vertex-row button:not(.primary):not(.danger):hover:not(:disabled),
+.modal-section-title button:not(.primary):not(.danger):hover:not(:disabled),
+.btn:not(.primary):not(.danger):hover:not(:disabled) {
   background: var(--color-primary-soft);
   border-color: var(--color-primary);
   color: var(--color-primary);
 }
 
+/* --- Biến thể chính ---------------------------------------------------------
+   Mỗi trạng thái tự khai đủ nền + viền + chữ, không dựa vào quy tắc khác. */
 .primary-btn,
+.btn.primary,
 .modal-footer button.primary,
 .coord-form button[type="submit"],
 .inline-form button[type="submit"] {
@@ -255,24 +263,28 @@ textarea {
   border: 1px solid var(--color-primary);
   border-radius: var(--radius-md);
   cursor: pointer;
-  transition: background var(--duration-fast) var(--ease-out);
+  white-space: nowrap;
+  transition:
+    background var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out);
 }
 
 .primary-btn:hover:not(:disabled),
+.btn.primary:hover:not(:disabled),
 .modal-footer button.primary:hover:not(:disabled),
 .coord-form button[type="submit"]:hover:not(:disabled),
 .inline-form button[type="submit"]:hover:not(:disabled) {
   background: var(--color-primary-hover);
+  border-color: var(--color-primary-hover);
+  color: var(--color-on-primary);
 }
 
-.primary-btn:disabled,
-.modal-footer button.primary:disabled {
-  opacity: 0.55;
-}
-
-/* Thao tác nguy hiểm tách hẳn bằng màu ngữ nghĩa, không chỉ dựa vào chữ. */
+/* --- Biến thể nguy hiểm -----------------------------------------------------
+   Đỏ chỉ dành cho thao tác không hồi lại được, để tín hiệu cảnh báo không bị
+   loãng vì dùng chung với những nút vô hại như đóng hộp thoại. */
 button.danger {
   color: var(--color-danger);
+  background: var(--color-surface);
   border-color: var(--color-danger-border);
 }
 
@@ -280,6 +292,21 @@ button.danger:hover:not(:disabled) {
   background: var(--color-danger-soft);
   border-color: var(--color-danger);
   color: var(--color-danger);
+}
+
+/* --- Trạng thái vô hiệu -----------------------------------------------------
+   Nút chính thường mang chữ trạng thái ("Đang lưu..."), nên làm mờ ít hơn nút
+   trung tính để vẫn đọc được. */
+button:disabled {
+  opacity: 0.5;
+}
+
+.primary-btn:disabled,
+.btn.primary:disabled,
+.modal-footer button.primary:disabled,
+.coord-form button[type="submit"]:disabled,
+.inline-form button[type="submit"]:disabled {
+  opacity: 0.68;
 }
 
 .link-btn {
@@ -301,8 +328,8 @@ button.danger:hover:not(:disabled) {
 }
 
 .link-btn:hover {
-  background: var(--color-danger-soft);
-  color: var(--color-danger);
+  background: var(--color-surface-sunken);
+  color: var(--color-text);
 }
 
 .icon-btn {
@@ -742,10 +769,11 @@ label {
     color var(--duration-fast) var(--ease-out);
 }
 
+/* Đóng hộp thoại không phải thao tác nguy hiểm nên dùng nhấn mạnh trung tính. */
 .close-btn-inline:hover {
-  background: var(--color-danger-soft);
-  color: var(--color-danger);
-  border-color: var(--color-danger-border);
+  background: var(--color-surface-sunken);
+  color: var(--color-text);
+  border-color: var(--color-border-strong);
 }
 
 .modal-toolbar,
@@ -1248,6 +1276,12 @@ label {
   width: var(--tap-target);
 }
 
+/* Ghi đè hover của .section-tools button để nút đóng giữ đúng kiểu trung tính. */
+.section-tools .close-btn-inline:hover {
+  background: var(--color-surface-sunken);
+  color: var(--color-text);
+}
+
 .section-widget {
   background: #e9e9e9;
   padding: var(--space-3);
@@ -1460,5 +1494,180 @@ label {
 
   .user-card-main {
     flex-basis: calc(100% - 60px);
+  }
+}
+
+/* =============================================================================
+   Thông báo nổi
+   Neo theo màn hình nên luôn nhìn thấy, kể cả khi hộp thoại đang cuộn.
+   ========================================================================== */
+
+.toast-stack {
+  position: fixed;
+  right: var(--space-4);
+  bottom: var(--space-4);
+  z-index: var(--z-toast);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  max-width: min(380px, calc(100vw - 32px));
+  /* Không chặn thao tác với nội dung bên dưới; chỉ từng toast mới nhận chuột. */
+  pointer-events: none;
+}
+
+.toast {
+  pointer-events: auto;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-lg);
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+  animation: toast-in var(--duration-base) var(--ease-out);
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+}
+
+/* Viền trái dày mang thông tin loại thông báo, kèm biểu tượng — không truyền
+   tin chỉ bằng màu. */
+.toast-success {
+  border-left: 3px solid var(--color-success);
+  color: var(--color-success);
+}
+
+.toast-error {
+  border-left: 3px solid var(--color-danger);
+  color: var(--color-danger);
+}
+
+.toast-info {
+  border-left: 3px solid var(--color-primary);
+  color: var(--color-primary);
+}
+
+.toast .icon {
+  margin-top: 1px;
+}
+
+.toast-body {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: var(--color-text);
+}
+
+.toast-label {
+  display: block;
+  font-size: var(--text-2xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: inherit;
+  margin-bottom: 1px;
+}
+
+.toast-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--color-text-subtle);
+  cursor: pointer;
+}
+
+.toast-close:hover {
+  background: var(--color-surface-sunken);
+  color: var(--color-text);
+}
+
+/* =============================================================================
+   Lỗi biểu mẫu — đặt cạnh nút bấm đã gây ra lỗi
+   ========================================================================== */
+
+.form-error {
+  /* Không hiện vòng focus vì tiêu điểm ở đây là do mã chuyển tới, không phải
+     người dùng Tab vào; bản thân khối đã đủ nổi bật. */
+  outline: none;
+  scroll-margin: var(--space-6);
+}
+
+/* =============================================================================
+   Hộp thoại xác nhận
+   ========================================================================== */
+
+.confirm-overlay {
+  align-items: center;
+  /* Cao hơn hộp thoại thường vì nó mở chồng lên trên. */
+  z-index: calc(var(--z-modal) + 10);
+}
+
+.confirm-panel {
+  max-width: 440px;
+  text-align: center;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.confirm-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  border-radius: var(--radius-full);
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  margin-bottom: var(--space-1);
+}
+
+.confirm-icon.is-destructive {
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+}
+
+.confirm-panel h2 {
+  font-size: var(--text-md);
+}
+
+.confirm-message {
+  font-size: var(--text-sm);
+  color: var(--color-text);
+  line-height: var(--leading-normal);
+}
+
+.confirm-detail {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  line-height: var(--leading-normal);
+  background: var(--color-surface-sunken);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-3);
+}
+
+.confirm-panel .modal-footer {
+  width: 100%;
+  justify-content: center;
+}
+
+@media (max-width: 480px) {
+  .toast-stack {
+    left: var(--space-3);
+    right: var(--space-3);
+    bottom: var(--space-3);
+    max-width: none;
   }
 }

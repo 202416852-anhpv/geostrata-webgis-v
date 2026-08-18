@@ -1,0 +1,23 @@
+[
+  {
+    "username": "admin",
+    "full_name": "Quản trị hệ thống",
+    "email": "admin@geostrata.local",
+    "password": "admin123",
+    "role": "admin"
+  },
+  {
+    "username": "quanly",
+    "full_name": "Nguyễn Văn Quản Lý",
+    "email": "quanly@geostrata.local",
+    "password": "quanly123",
+    "role": "manager"
+  },
+  {
+    "username": "nguoidung",
+    "full_name": "Trần Thị Người Dùng",
+    "email": "nguoidung@geostrata.local",
+    "password": "nguoidung123",
+    "role": "user"
+  }
+]

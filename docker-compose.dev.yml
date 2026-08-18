@@ -1,0 +1,36 @@
+# Chế độ phát triển: hot-reload cho cả backend và frontend.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+#
+# Giao diện dev (Vite): http://localhost:5173
+
+services:
+  backend:
+    volumes:
+      - ./backend/app:/app/app:ro
+      - ./data:/app/data:ro
+      - ./db/migrations:/app/db/migrations:ro
+    environment:
+      DB_ECHO: "true"
+    # entrypoint.sh kết thúc bằng `exec uvicorn ... "$@"`, nên command ở đây
+    # được nối thêm vào cuối lệnh uvicorn.
+    command: ["--reload", "--reload-dir", "/app/app"]
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile.dev
+    # !override thay hẳn danh sách ports của file gốc; mặc định compose sẽ gộp
+    # hai danh sách và publish thừa cổng 8080 mà chế độ dev không dùng tới.
+    ports: !override
+      - "5173:5173"
+    volumes:
+      - ./frontend/src:/app/src
+      - ./frontend/index.html:/app/index.html
+      - ./frontend/vite.config.ts:/app/vite.config.ts
+      - ./frontend/tsconfig.json:/app/tsconfig.json
+    environment:
+      VITE_API_PROXY_TARGET: http://backend:8000
+      # Bind mount trên Windows/macOS không phát sinh sự kiện inotify,
+      # phải cho Vite dò file theo chu kỳ thì hot-reload mới chạy.
+      VITE_USE_POLLING: "true"

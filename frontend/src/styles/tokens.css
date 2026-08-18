@@ -1,0 +1,243 @@
+/**
+ * Design token — nguồn duy nhất cho màu, khoảng cách, chữ và đổ bóng.
+ *
+ * Phong cách: Data-Dense Dashboard. Ưu tiên mật độ thông tin: padding 8-12px,
+ * chữ 12-14px, hàng bảng 36px, viền mảnh thay cho bóng đổ dày.
+ *
+ * Quy tắc: component KHÔNG viết mã màu trực tiếp, chỉ dùng biến ở đây. Nhờ vậy
+ * chế độ tối chỉ cần định nghĩa lại token, không phải sửa từng chỗ.
+ */
+
+:root {
+  /* --- Màu thương hiệu ------------------------------------------------- */
+  --color-primary: #1e40af;
+  --color-primary-hover: #1b3a9e;
+  --color-primary-soft: #e8effb;
+  --color-on-primary: #ffffff;
+  --color-secondary: #3b82f6;
+
+  /* Hổ phách dùng cho nhấn mạnh và cảnh báo nhẹ (đã hiệu chỉnh đạt WCAG 3:1) */
+  --color-accent: #d97706;
+  --color-accent-soft: #fdf3e3;
+
+  /* --- Bề mặt ----------------------------------------------------------- */
+  --color-background: #eef2f7;
+  --color-surface: #ffffff;
+  --color-surface-raised: #ffffff;
+  --color-surface-sunken: #f6f8fb;
+  --color-overlay: rgba(15, 23, 42, 0.62);
+
+  /* --- Chữ -------------------------------------------------------------- */
+  --color-text: #16233c;
+  --color-text-muted: #5b6779;
+  --color-text-subtle: #6b7689;
+  --color-text-on-accent: #ffffff;
+
+  /* --- Đường viền ------------------------------------------------------- */
+  /* border: đường phân cách trang trí. border-strong: viền ô nhập và nút, phải
+     đạt tương phản 3:1 vì đó là ranh giới nhận biết của thành phần điều khiển. */
+  --color-border: #d3dcea;
+  --color-border-strong: #7e95b7;
+  --color-ring: #1e40af;
+
+  /* --- Màu trạng thái --------------------------------------------------- */
+  --color-success: #147c3b;
+  --color-success-soft: #e7f5ec;
+  --color-danger: #d12222;
+  --color-danger-soft: #fdecea;
+  --color-danger-border: #f3c2bd;
+  --color-warning: #b45309;
+  --color-warning-soft: #fdf3e3;
+
+  /* --- Màu theo vai trò tài khoản --------------------------------------- */
+  --color-role-admin: #b02a37;
+  --color-role-manager: #a16207;
+  --color-role-user: #4b5768;
+
+  /* --- Bản đồ ----------------------------------------------------------- */
+  --color-map-marker: #1e40af;
+  --color-map-marker-selected: #d97706;
+  --color-map-centre: #dc2626;
+  --color-map-boundary: #6d3fd4;
+  --color-map-ring: #1e40af;
+
+  /* --- Chữ -------------------------------------------------------------- */
+  --font-sans: "Fira Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  /* Chữ đều cho số liệu: toạ độ, độ sâu, diện tích không nhảy cột khi đổi giá trị. */
+  --font-mono: "Fira Code", ui-monospace, "SF Mono", Consolas, monospace;
+
+  --text-2xs: 10.5px;
+  --text-xs: 11.5px;
+  --text-sm: 12.5px;
+  --text-base: 13.5px;
+  --text-md: 15px;
+  --text-lg: 18px;
+  --text-xl: 22px;
+  --text-2xl: 26px;
+
+  --leading-tight: 1.3;
+  --leading-normal: 1.55;
+
+  /* --- Khoảng cách: thang 4px ------------------------------------------- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+
+  /* --- Kích thước bố cục ------------------------------------------------ */
+  --sidebar-width: 340px;
+  --row-height: 36px;
+  --control-height: 34px;
+  /* Vùng chạm tối thiểu 44px theo chuẩn khả dụng, dùng cho nút biểu tượng. */
+  --tap-target: 44px;
+
+  /* --- Bo góc ----------------------------------------------------------- */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+  --radius-full: 999px;
+
+  /* --- Đổ bóng: nhẹ, giao diện dày dữ liệu dựa vào viền là chính -------- */
+  --shadow-xs: 0 1px 2px rgba(16, 28, 51, 0.06);
+  --shadow-sm: 0 1px 3px rgba(16, 28, 51, 0.1);
+  --shadow-md: 0 4px 12px rgba(16, 28, 51, 0.12);
+  --shadow-lg: 0 12px 32px rgba(16, 28, 51, 0.22);
+
+  /* --- Chuyển động ------------------------------------------------------ */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --duration-fast: 120ms;
+  --duration-base: 180ms;
+
+  /* --- Tầng xếp lớp ----------------------------------------------------- */
+  --z-map-control: 500;
+  --z-section: 1000;
+  --z-modal: 1100;
+  --z-toast: 1200;
+
+  color-scheme: light;
+}
+
+/* =============================================================================
+   Chế độ tối
+   Không đảo ngược màu sáng mà dùng bộ tông riêng: nền xanh đen nhạt dần theo
+   độ cao, chữ giảm bão hoà. Kiểm tra tương phản độc lập với chế độ sáng.
+   ========================================================================== */
+:root[data-theme="dark"] {
+  --color-primary: #6f9bff;
+  --color-primary-hover: #85acff;
+  --color-primary-soft: #1b2740;
+  --color-on-primary: #0a1020;
+  --color-secondary: #8ab4ff;
+
+  --color-accent: #f0a94a;
+  --color-accent-soft: #34260f;
+
+  --color-background: #0c111c;
+  --color-surface: #141b2a;
+  --color-surface-raised: #1a2233;
+  --color-surface-sunken: #101725;
+  --color-overlay: rgba(3, 6, 14, 0.74);
+
+  --color-text: #e5ebf5;
+  --color-text-muted: #a3aec1;
+  --color-text-subtle: #7f8b9f;
+  --color-text-on-accent: #10151f;
+
+  --color-border: #2a3448;
+  --color-border-strong: #56688c;
+  --color-ring: #6f9bff;
+
+  --color-success: #56d68b;
+  --color-success-soft: #12271b;
+  --color-danger: #ff6b6b;
+  --color-danger-soft: #2e1618;
+  --color-danger-border: #5c2b2e;
+  --color-warning: #f0a94a;
+  --color-warning-soft: #34260f;
+
+  --color-role-admin: #ff7b7b;
+  --color-role-manager: #f0b64a;
+  --color-role-user: #9aa7bc;
+
+  --color-map-marker: #6f9bff;
+  --color-map-marker-selected: #f0a94a;
+  --color-map-centre: #ff6b6b;
+  --color-map-boundary: #a98bff;
+  --color-map-ring: #6f9bff;
+
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.45);
+  --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 12px 34px rgba(0, 0, 0, 0.6);
+
+  color-scheme: dark;
+}
+
+/* Người dùng chưa chọn thủ công thì theo thiết lập hệ điều hành. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --color-primary: #6f9bff;
+    --color-primary-hover: #85acff;
+    --color-primary-soft: #1b2740;
+    --color-on-primary: #0a1020;
+    --color-secondary: #8ab4ff;
+
+    --color-accent: #f0a94a;
+    --color-accent-soft: #34260f;
+
+    --color-background: #0c111c;
+    --color-surface: #141b2a;
+    --color-surface-raised: #1a2233;
+    --color-surface-sunken: #101725;
+    --color-overlay: rgba(3, 6, 14, 0.74);
+
+    --color-text: #e5ebf5;
+    --color-text-muted: #a3aec1;
+    --color-text-subtle: #7f8b9f;
+    --color-text-on-accent: #10151f;
+
+    --color-border: #2a3448;
+    --color-border-strong: #56688c;
+    --color-ring: #6f9bff;
+
+    --color-success: #56d68b;
+    --color-success-soft: #12271b;
+    --color-danger: #ff6b6b;
+    --color-danger-soft: #2e1618;
+    --color-danger-border: #5c2b2e;
+    --color-warning: #f0a94a;
+    --color-warning-soft: #34260f;
+
+    --color-role-admin: #ff7b7b;
+    --color-role-manager: #f0b64a;
+    --color-role-user: #9aa7bc;
+
+    --color-map-marker: #6f9bff;
+    --color-map-marker-selected: #f0a94a;
+    --color-map-centre: #ff6b6b;
+    --color-map-boundary: #a98bff;
+    --color-map-ring: #6f9bff;
+
+    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.45);
+    --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.5);
+    --shadow-lg: 0 12px 34px rgba(0, 0, 0, 0.6);
+
+    color-scheme: dark;
+  }
+}
+
+/* Tôn trọng thiết lập giảm chuyển động của hệ điều hành. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

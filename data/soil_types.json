@@ -1,0 +1,92 @@
+[
+  {
+    "code": "fill",
+    "name": "Đất san lấp",
+    "description": "màu xám, lẫn gạch vụn - xà bần, kết cấu rời rạc",
+    "color": "#8b8f96",
+    "pattern": "crosshatch",
+    "is_fill": true,
+    "strata_order": 1
+  },
+  {
+    "code": "organic_clay",
+    "name": "Bùn sét hữu cơ",
+    "description": "màu xám đen - xám xanh, lẫn thực vật phân huỷ, trạng thái chảy",
+    "color": "#6f7f6a",
+    "pattern": "hatch",
+    "is_fill": false,
+    "strata_order": 2
+  },
+  {
+    "code": "sandy_clay_soft",
+    "name": "Sét pha nặng",
+    "description": "màu nâu vàng - xám xanh, trạng thái dẻo mềm",
+    "color": "#c9a24b",
+    "pattern": "hatch",
+    "is_fill": false,
+    "strata_order": 3
+  },
+  {
+    "code": "laterite_clay",
+    "name": "Sét pha lẫn sạn sỏi laterit",
+    "description": "màu nâu đỏ, trạng thái nửa cứng",
+    "color": "#c96f4a",
+    "pattern": "gravel",
+    "is_fill": false,
+    "strata_order": 4
+  },
+  {
+    "code": "sandy_clay_stiff",
+    "name": "Sét pha",
+    "description": "màu nâu vàng - nâu đỏ - xám xanh, trạng thái dẻo cứng",
+    "color": "#d8b98c",
+    "pattern": "dense",
+    "is_fill": false,
+    "strata_order": 5
+  },
+  {
+    "code": "clay_stiff",
+    "name": "Sét",
+    "description": "màu nâu đỏ - nâu vàng - nâu hồng, trạng thái dẻo cứng",
+    "color": "#e8a09a",
+    "pattern": "hatch",
+    "is_fill": false,
+    "strata_order": 6
+  },
+  {
+    "code": "clayey_sand",
+    "name": "Cát pha",
+    "description": "màu nâu vàng - xám vàng, đôi chỗ lẫn sạn sỏi thạch anh",
+    "color": "#f2d07b",
+    "pattern": "dots",
+    "is_fill": false,
+    "strata_order": 7
+  },
+  {
+    "code": "sand_fine",
+    "name": "Cát hạt mịn - trung",
+    "description": "màu xám vàng, trạng thái chặt vừa, bão hoà nước",
+    "color": "#e6d7a1",
+    "pattern": "sand",
+    "is_fill": false,
+    "strata_order": 8
+  },
+  {
+    "code": "sand_coarse",
+    "name": "Cát hạt trung - thô",
+    "description": "màu xám, trạng thái chặt, đôi chỗ lẫn dăm sạn",
+    "color": "#b7b384",
+    "pattern": "sand",
+    "is_fill": false,
+    "strata_order": 9
+  },
+  {
+    "code": "gravel",
+    "name": "Cuội sỏi",
+    "description": "màu xám tro - nâu vàng, trạng thái chặt",
+    "color": "#a8a06a",
+    "pattern": "gravel",
+    "is_fill": false,
+    "strata_order": 10
+  }
+]

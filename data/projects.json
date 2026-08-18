@@ -1,0 +1,137 @@
+[
+  {
+    "code": "TTDH-CN",
+    "name": "TRUNG TÂM ĐIỀU HÀNH CHƯƠNG TRÌNH CHỐNG NGẬP NƯỚC TP.HCM",
+    "location_label": "Quận 1, TP. Hồ Chí Minh",
+    "seed": 20240101,
+    "borehole_prefix": "HK",
+    "grid": {
+      "center_lat": 10.7769,
+      "center_lng": 106.6953,
+      "rows": 8,
+      "cols": 8,
+      "spacing_m": 25.0,
+      "jitter_m": 6.0
+    },
+    "depth": {
+      "min_m": 30.0,
+      "max_m": 60.0
+    },
+    "stratigraphy": {
+      "min_layers": 5,
+      "max_layers": 8,
+      "min_thickness_m": 1.5,
+      "fill_probability": 0.8
+    },
+    "built_year": 2018,
+    "scale_description": "Nhà điều hành 9 tầng, 1 tầng hầm, khoảng 11.500 m² sàn",
+    "boundary": [
+      {
+        "lat": 10.7760017,
+        "lng": 106.6943856
+      },
+      {
+        "lat": 10.7760017,
+        "lng": 106.6962144
+      },
+      {
+        "lat": 10.7777983,
+        "lng": 106.6962144
+      },
+      {
+        "lat": 10.7777983,
+        "lng": 106.6943856
+      }
+    ]
+  },
+  {
+    "code": "TTM-TT",
+    "name": "KHU ĐÔ THỊ MỚI THỦ THIÊM - HẠ TẦNG KỸ THUẬT KHU 2B",
+    "location_label": "Thành phố Thủ Đức, TP. Hồ Chí Minh",
+    "seed": 20240202,
+    "borehole_prefix": "HK",
+    "grid": {
+      "center_lat": 10.787,
+      "center_lng": 106.722,
+      "rows": 7,
+      "cols": 7,
+      "spacing_m": 30.0,
+      "jitter_m": 8.0
+    },
+    "depth": {
+      "min_m": 40.0,
+      "max_m": 70.0
+    },
+    "stratigraphy": {
+      "min_layers": 6,
+      "max_layers": 8,
+      "min_thickness_m": 2.0,
+      "fill_probability": 0.6
+    },
+    "built_year": 2020,
+    "scale_description": "Hạ tầng kỹ thuật khu 2B: 3,2 km đường và cống hộp",
+    "boundary": [
+      {
+        "lat": 10.7860568,
+        "lng": 106.7210398
+      },
+      {
+        "lat": 10.7860568,
+        "lng": 106.7229602
+      },
+      {
+        "lat": 10.7879432,
+        "lng": 106.7229602
+      },
+      {
+        "lat": 10.7879432,
+        "lng": 106.7210398
+      }
+    ]
+  },
+  {
+    "code": "BXMD-M",
+    "name": "BẾN XE MIỀN ĐÔNG MỚI - GIAI ĐOẠN 2",
+    "location_label": "Phường Long Bình, Thành phố Thủ Đức, TP. Hồ Chí Minh",
+    "seed": 20240303,
+    "borehole_prefix": "HK",
+    "grid": {
+      "center_lat": 10.876,
+      "center_lng": 106.813,
+      "rows": 6,
+      "cols": 8,
+      "spacing_m": 28.0,
+      "jitter_m": 5.0
+    },
+    "depth": {
+      "min_m": 25.0,
+      "max_m": 50.0
+    },
+    "stratigraphy": {
+      "min_layers": 5,
+      "max_layers": 7,
+      "min_thickness_m": 1.5,
+      "fill_probability": 0.9
+    },
+    "built_year": 2022,
+    "scale_description": "Bến xe khách loại 1, nhà ga 2 tầng, bãi đỗ 16 ha",
+    "boundary": [
+      {
+        "lat": 10.8752454,
+        "lng": 106.8119755
+      },
+      {
+        "lat": 10.8752454,
+        "lng": 106.8140245
+      },
+      {
+        "lat": 10.8767546,
+        "lng": 106.8140245
+      },
+      {
+        "lat": 10.8767546,
+        "lng": 106.8119755
+      }
+    ]
+  }
+]

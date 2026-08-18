@@ -1,0 +1,36 @@
+# Build context của cả hai image là GỐC REPO (xem docker-compose.yml), nên chỉ
+# file .dockerignore này có tác dụng — đặt trong backend/ hay frontend/ đều vô ích.
+#
+# Quan trọng: phải loại node_modules ra. Nó được cài trên máy host (Windows/macOS)
+# nên chứa binary sai kiến trúc; copy vào image Linux là hỏng bước build.
+
+# Node
+**/node_modules/
+**/dist/
+**/.vite/
+*.log
+
+# Python
+**/__pycache__/
+**/*.py[cod]
+**/.venv/
+**/venv/
+**/.pytest_cache/
+**/.ruff_cache/
+
+# Git & tài liệu
+.git/
+.gitignore
+README.md
+Makefile
+
+# Môi trường (biến môi trường truyền qua docker-compose, không nướng vào image)
+.env
+.env.local
+.env.example
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

@@ -1,0 +1,102 @@
+# GeoStrata WebGIS - triển khai đầy đủ ở máy local.
+#
+#   docker compose up -d --build        khởi động toàn bộ (db + backend + frontend)
+#   docker compose --profile tools up -d  kèm Adminer để xem CSDL
+#
+# Giao diện:  http://localhost:8080
+# API + docs: http://localhost:8000/api/docs
+# CSDL:       localhost:5433 (đổi cổng để không đụng PostgreSQL cài sẵn trên máy)
+
+name: geostrata
+
+services:
+  db:
+    image: postgis/postgis:16-3.4-alpine
+    container_name: geostrata-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-geostrata}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-geostrata}
+      POSTGRES_DB: ${POSTGRES_DB:-geostrata}
+      # Cần cho pg_isready khi user không phải "postgres".
+      PGUSER: ${POSTGRES_USER:-geostrata}
+    ports:
+      - "${DB_PORT:-5433}:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      # Chỉ chạy MỘT lần, lúc volume còn rỗng.
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -d $${POSTGRES_DB} -U $${POSTGRES_USER}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: geostrata-backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-geostrata}:${POSTGRES_PASSWORD:-geostrata}@db:5432/${POSTGRES_DB:-geostrata}
+      DEFAULT_SEARCH_RADIUS_M: ${DEFAULT_SEARCH_RADIUS_M:-150}
+      MAX_SEARCH_RADIUS_M: ${MAX_SEARCH_RADIUS_M:-5000}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8080,http://localhost:5173}
+      DATA_DIR: /app/data
+      MIGRATIONS_DIR: /app/db/migrations
+      SESSION_TTL_HOURS: ${SESSION_TTL_HOURS:-12}
+      ALLOW_SELF_REGISTRATION: ${ALLOW_SELF_REGISTRATION:-true}
+      MAX_AVATAR_BYTES: ${MAX_AVATAR_BYTES:-512000}
+      BOOTSTRAP_ADMIN_USERNAME: ${BOOTSTRAP_ADMIN_USERNAME:-admin}
+      BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-admin123}
+      SEED_ON_STARTUP: ${SEED_ON_STARTUP:-true}
+      PORT: 8000
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/api/health', timeout=3).status==200 else 1)",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    container_name: geostrata-frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_started
+    ports:
+      - "${FRONTEND_PORT:-8080}:80"
+
+  # Xem/sửa CSDL qua trình duyệt: docker compose --profile tools up -d adminer
+  adminer:
+    image: adminer:4-standalone
+    container_name: geostrata-adminer
+    restart: unless-stopped
+    profiles: ["tools"]
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      ADMINER_DEFAULT_SERVER: db
+    ports:
+      - "${ADMINER_PORT:-8081}:8080"
+
+volumes:
+  db_data:
+    name: geostrata_db_data

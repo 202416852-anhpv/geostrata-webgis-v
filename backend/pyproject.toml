@@ -1,0 +1,30 @@
+[project]
+name = "geostrata-backend"
+version = "1.0.0"
+description = "API tra cứu lỗ khoan địa chất và mặt cắt địa tầng"
+requires-python = ">=3.10"
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 110
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+# Depends()/Query()/Path() trong giá trị mặc định là cú pháp chuẩn của FastAPI,
+# không phải lỗi "mutable default argument" mà B008 muốn bắt.
+[tool.ruff.lint.flake8-bugbear]
+extend-immutable-calls = [
+    "fastapi.Depends",
+    "fastapi.Query",
+    "fastapi.Path",
+    "fastapi.Body",
+    "fastapi.Header",
+    "fastapi.File",
+    "fastapi.Form",
+]

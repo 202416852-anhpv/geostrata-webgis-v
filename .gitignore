@@ -1,6 +1,23 @@
+# Node
 node_modules/
 dist/
+.vite/
 *.log
-.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+
+# Môi trường
 .env
 .env.local
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

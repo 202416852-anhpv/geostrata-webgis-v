@@ -13,13 +13,18 @@ import ProfilePanel from "./components/ProfilePanel";
 import ProjectManagement from "./components/ProjectManagement";
 import SearchPanel from "./components/SearchPanel";
 import ThemeToggle from "./components/ThemeToggle";
+import MapPickToolbar from "./components/MapPickToolbar";
+import PlaceSearch from "./components/PlaceSearch";
 import { ToastProvider, useToast } from "./components/Toast";
+import { MapPickProvider, useMapPick } from "./map/MapPickContext";
 import UserManagement from "./components/UserManagement";
 import {
   ROLE_LABEL,
   type Borehole,
   type BoreholeSection,
+  type BoundingBox,
   type ClientConfig,
+  type Place,
   type Project,
 } from "./types";
 
@@ -29,9 +34,11 @@ const FALLBACK_RADIUS_M = 150;
 export default function App() {
   return (
     <ToastProvider>
-      <AuthProvider>
-        <Root />
-      </AuthProvider>
+      <MapPickProvider>
+        <AuthProvider>
+          <Root />
+        </AuthProvider>
+      </MapPickProvider>
     </ToastProvider>
   );
 }
@@ -49,6 +56,7 @@ function Root() {
 function Workspace() {
   const { user, logout, can } = useAuth();
   const toast = useToast();
+  const { isPicking } = useMapPick();
 
   const [config, setConfig] = useState<ClientConfig | null>(null);
   const [center, setCenter] = useState<[number, number]>(INITIAL_CENTER);
@@ -61,6 +69,7 @@ function Workspace() {
   const [error, setError] = useState<string | null>(null);
 
   const [projects, setProjects] = useState<Project[]>([]);
+  const [focusBounds, setFocusBounds] = useState<BoundingBox | null>(null);
   const [showUsers, setShowUsers] = useState(false);
   const [showProjects, setShowProjects] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
@@ -125,6 +134,21 @@ function Workspace() {
     void reloadProjects();
   }, [reloadProjects]);
 
+  /** Chọn một địa điểm từ ô tìm kiếm: phóng bản đồ tới đó. */
+  const handlePlace = useCallback(
+    (place: Place) => {
+      setFocusBounds(place.bbox);
+      // Đang vẽ ranh giới thì chỉ dời bản đồ, không nạp lại danh sách hố khoan —
+      // nếu không, các đỉnh đang đặt dở sẽ bị xoá theo.
+      if (isPicking) {
+        setCenter([place.lat, place.lng]);
+        return;
+      }
+      void search(place.lat, place.lng, radiusM);
+    },
+    [isPicking, search, radiusM],
+  );
+
   const handleSelect = useCallback(async (borehole: Borehole) => {
     sectionAbort.current?.abort();
     const controller = new AbortController();
@@ -178,7 +202,7 @@ function Workspace() {
   );
 
   return (
-    <div className="app">
+    <div className={`app ${isPicking ? "is-picking" : ""}`}>
       <aside className="sidebar">
         <div className="sidebar-logo">
           <Icon name="drill" size={26} />
@@ -266,9 +290,12 @@ function Workspace() {
           boreholes={boreholes}
           projects={projects}
           selectedId={selected?.id ?? null}
+          focusBounds={focusBounds}
           onPick={(lat, lng) => search(lat, lng, radiusM)}
           onSelect={handleSelect}
         />
+        {(config?.geocode_enabled ?? true) && <PlaceSearch onSelect={handlePlace} />}
+        <MapPickToolbar />
       </main>
 
       {(sectionLoading || section) && (

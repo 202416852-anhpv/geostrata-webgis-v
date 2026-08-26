@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import * as api from "../api";
 import { ApiError } from "../api";
+import { useMapPick } from "../map/MapPickContext";
 import FormError from "./FormError";
 import Icon from "./Icon";
 import type {
@@ -79,6 +80,7 @@ export default function BoreholeEditor({
   const isEdit = Boolean(existing);
   const borehole = existing?.borehole;
 
+  const pick = useMapPick();
   const [soilTypes, setSoilTypes] = useState<SoilType[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [projectCode, setProjectCode] = useState(borehole?.project_code ?? "");
@@ -120,6 +122,22 @@ export default function BoreholeEditor({
     })();
     return () => controller.abort();
   }, []);
+
+  /** Chọn vị trí hố khoan bằng cách nhấp lên bản đồ thay vì gõ toạ độ. */
+  const pickLocation = async () => {
+    const current = Number.isFinite(Number(lat)) && Number.isFinite(Number(lng))
+      ? [{ lat: Number(lat), lng: Number(lng) }]
+      : [];
+    const picked = await pick.start({
+      label: "Vị trí hố khoan",
+      modes: ["point"],
+      initial: current,
+    });
+    if (!picked || picked.length === 0) return;
+    setLat(picked[0].lat.toFixed(6));
+    setLng(picked[0].lng.toFixed(6));
+    setError(null);
+  };
 
   /** Lớp mới nối tiếp đáy lớp cuối, để mặc định đã liền mạch. */
   const addLayer = useCallback(() => {
@@ -213,7 +231,10 @@ export default function BoreholeEditor({
   const liveError = validateLayers(layers, Number.isFinite(depthValue) ? depthValue : 0);
 
   return (
-    <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
+    <div
+      className={`modal-overlay ${pick.isPicking ? "is-hidden" : ""}`}
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
       <form
         className="modal-panel"
         onSubmit={handleSubmit}
@@ -273,6 +294,14 @@ export default function BoreholeEditor({
           </label>
           {locationKind === "point" && (
             <>
+              <div className="form-wide pick-row">
+                <button type="button" className="primary" onClick={() => void pickLocation()}>
+                  <Icon name="crosshair" /> Chọn vị trí trên bản đồ
+                </button>
+                <span className="field-hint">
+                  Hoặc gõ trực tiếp toạ độ vào hai ô bên dưới.
+                </span>
+              </div>
               <label>
                 Vĩ độ
                 <input

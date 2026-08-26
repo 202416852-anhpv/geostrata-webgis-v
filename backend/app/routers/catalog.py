@@ -37,4 +37,5 @@ def client_config(config: Settings = Depends(get_settings)) -> ClientConfigOut:
         max_results=config.max_results,
         allow_self_registration=config.allow_self_registration,
         max_avatar_bytes=config.max_avatar_bytes,
+        geocode_enabled=config.geocode_enabled,
     )

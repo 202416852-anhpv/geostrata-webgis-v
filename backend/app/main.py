@@ -10,7 +10,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.config import get_settings
-from app.routers import auth, boreholes, catalog, health, projects, users
+from app.routers import auth, boreholes, catalog, geocode, health, projects, users
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s [%(name)s] %(message)s")
 logger = logging.getLogger("geostrata")
@@ -36,6 +36,7 @@ app.add_middleware(
 app.include_router(health.router, prefix=settings.api_prefix)
 app.include_router(auth.router, prefix=settings.api_prefix)
 app.include_router(catalog.router, prefix=settings.api_prefix)
+app.include_router(geocode.router, prefix=settings.api_prefix)
 app.include_router(projects.router, prefix=settings.api_prefix)
 app.include_router(boreholes.router, prefix=settings.api_prefix)
 app.include_router(users.router, prefix=settings.api_prefix)

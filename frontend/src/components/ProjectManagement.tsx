@@ -8,6 +8,7 @@ import ConfirmDialog from "./ConfirmDialog";
 import FormError from "./FormError";
 import Icon from "./Icon";
 import { useToast } from "./Toast";
+import { useMapPick } from "../map/MapPickContext";
 
 interface DraftVertex {
   lat: string;
@@ -39,6 +40,7 @@ export default function ProjectManagement({
   onClose,
 }: ProjectManagementProps) {
   const toast = useToast();
+  const pick = useMapPick();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -93,6 +95,23 @@ export default function ProjectManagement({
   const closeForm = () => {
     setCreating(false);
     setEditing(null);
+  };
+
+  /** Mở phiên vẽ trên bản đồ; hộp thoại tạm ẩn nhưng dữ liệu đã nhập vẫn còn. */
+  const pickOnMap = async () => {
+    const current = vertices
+      .map((v) => ({ lat: Number(v.lat), lng: Number(v.lng) }))
+      .filter((v) => Number.isFinite(v.lat) && Number.isFinite(v.lng));
+
+    const picked = await pick.start({
+      label: "Ranh giới công trình",
+      modes: ["polygon", "rectangle", "circle"],
+      initial: current,
+    });
+    if (!picked) return;
+
+    setVertices(picked.map((v) => ({ lat: v.lat.toFixed(6), lng: v.lng.toFixed(6) })));
+    setFormError(null);
   };
 
   const addVertex = () => {
@@ -200,7 +219,10 @@ export default function ProjectManagement({
 
   return (
     <>
-      <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div
+        className={`modal-overlay ${pick.isPicking ? "is-hidden" : ""}`}
+        onClick={(e) => e.target === e.currentTarget && onClose()}
+      >
         <div className="modal-panel" role="dialog" aria-modal="true" aria-label="Quản lý công trình">
         <header className="modal-header">
           <h2>
@@ -280,9 +302,14 @@ export default function ProjectManagement({
               <span>
                 <Icon name="map-pin" size={13} /> Toạ độ ranh giới ({vertices.length} điểm)
               </span>
-              <button type="button" onClick={addVertex}>
-                <Icon name="plus" /> Thêm điểm
-              </button>
+              <span className="section-title-actions">
+                <button type="button" className="primary" onClick={() => void pickOnMap()}>
+                  <Icon name="crosshair" /> Chọn trên bản đồ
+                </button>
+                <button type="button" onClick={addVertex}>
+                  <Icon name="plus" /> Nhập tay
+                </button>
+              </span>
             </div>
 
             {vertices.length === 0 && (

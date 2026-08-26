@@ -240,6 +240,31 @@ export interface SoilType {
   strata_order: number;
 }
 
+// --- Tra cứu địa điểm --------------------------------------------------------
+
+export interface BoundingBox {
+  south: number;
+  west: number;
+  north: number;
+  east: number;
+}
+
+export interface Place {
+  name: string;
+  display_name: string;
+  lat: number;
+  lng: number;
+  category: string | null;
+  /** Khung bao để phóng bản đồ vừa khít; null với điểm đơn lẻ. */
+  bbox: BoundingBox | null;
+}
+
+export interface PlaceSearchResult {
+  query: string;
+  count: number;
+  places: Place[];
+}
+
 export interface ClientConfig {
   default_search_radius_m: number;
   min_search_radius_m: number;
@@ -247,4 +272,5 @@ export interface ClientConfig {
   max_results: number;
   allow_self_registration: boolean;
   max_avatar_bytes: number;
+  geocode_enabled: boolean;
 }

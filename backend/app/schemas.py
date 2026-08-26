@@ -413,6 +413,33 @@ class BulkCreateOut(BaseModel):
     boreholes: list[BoreholeOut]
 
 
+# --- Tra cứu địa điểm --------------------------------------------------------
+
+
+class BoundingBoxOut(BaseModel):
+    """Khung bao của địa điểm, dùng để phóng bản đồ vừa khít."""
+
+    south: float
+    west: float
+    north: float
+    east: float
+
+
+class PlaceOut(BaseModel):
+    name: str
+    display_name: str = Field(description="Địa chỉ đầy đủ")
+    lat: float
+    lng: float
+    category: str | None = None
+    bbox: BoundingBoxOut | None = None
+
+
+class PlaceSearchOut(BaseModel):
+    query: str
+    count: int
+    places: list[PlaceOut]
+
+
 class ClientConfigOut(BaseModel):
     """Tham số nghiệp vụ frontend đọc lúc khởi động — tránh hard-code hai nơi."""
 
@@ -422,6 +449,7 @@ class ClientConfigOut(BaseModel):
     max_results: int
     allow_self_registration: bool = True
     max_avatar_bytes: int = 512_000
+    geocode_enabled: bool = True
 
 
 class HealthOut(BaseModel):

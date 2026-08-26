@@ -50,6 +50,20 @@ class Settings(BaseSettings):
     bootstrap_admin_username: str = "admin"
     bootstrap_admin_password: str = "admin123"
 
+    # --- Tra cứu địa điểm ----------------------------------------------------
+    geocode_enabled: bool = True
+    nominatim_url: str = "https://nominatim.openstreetmap.org"
+    # Nominatim yêu cầu mỗi ứng dụng tự khai báo để nhận diện; đổi thành thông
+    # tin liên hệ thật nếu chạy ngoài môi trường local.
+    geocode_user_agent: str = (
+        "GeoStrataWebGIS/1.0 (khao sat dia chat; lien he: admin@geostrata.local)"
+    )
+    # Giới hạn kết quả trong Việt Nam. Để trống nếu cần tra cứu toàn cầu.
+    geocode_country_codes: str = "vn"
+    geocode_timeout_s: float = 6.0
+    # Chính sách của Nominatim: tối đa 1 yêu cầu mỗi giây.
+    geocode_min_interval_s: float = 1.0
+
     # --- Seed / migration ----------------------------------------------------
     data_dir: Path = Path("/app/data")
     migrations_dir: Path = Path("/app/db/migrations")

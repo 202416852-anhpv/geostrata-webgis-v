@@ -37,6 +37,10 @@ export type IconName =
   | "check"
   | "alert"
   | "info"
+  | "square"
+  | "circle"
+  | "undo"
+  | "crosshair"
   | "drill";
 
 /** Đường vẽ trong khung 24×24, nét được kế thừa từ thẻ svg bao ngoài. */
@@ -141,6 +145,15 @@ const PATHS: Record<IconName, JSX.Element> = {
     <>
       <circle cx="12" cy="12" r="9" />
       <path d="M12 11v5M12 8v.5" />
+    </>
+  ),
+  square: <rect x="4" y="4" width="16" height="16" rx="1.5" />,
+  circle: <circle cx="12" cy="12" r="8.5" />,
+  undo: <path d="M4 9h11a5 5 0 0 1 0 10h-5M4 9l4-4M4 9l4 4" />,
+  crosshair: (
+    <>
+      <circle cx="12" cy="12" r="7" />
+      <path d="M12 2v3M12 19v3M2 12h3M19 12h3" />
     </>
   ),
   /* Hố khoan: trục khoan cắm xuống, kèm các lớp địa tầng hai bên. */

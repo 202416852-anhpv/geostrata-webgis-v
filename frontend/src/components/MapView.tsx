@@ -7,13 +7,17 @@ import {
   MapContainer,
   Marker,
   Polygon,
+  Polyline,
   Popup,
+  Rectangle,
   TileLayer,
   Tooltip,
   useMap,
   useMapEvents,
 } from "react-leaflet";
-import type { Borehole, Project } from "../types";
+import { distanceM } from "../map/geo";
+import { sessionVertices, useMapPick } from "../map/MapPickContext";
+import type { Borehole, BoundingBox, Project } from "../types";
 
 const INITIAL_ZOOM = 17;
 
@@ -22,6 +26,21 @@ function token(name: string, fallback: string): string {
   if (typeof window === "undefined") return fallback;
   const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
   return value || fallback;
+}
+
+/** Đỉnh đang vẽ: đánh số để thấy rõ thứ tự nối các điểm. */
+function vertexIcon(index: number, numbered: boolean): L.DivIcon {
+  const colour = token("--color-accent", "#d97706");
+  const size = numbered ? 22 : 16;
+  return L.divIcon({
+    className: "",
+    html:
+      `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${colour};` +
+      `border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.35);color:#fff;font:600 11px/` +
+      `${size - 4}px sans-serif;text-align:center">${numbered ? index : ""}</div>`,
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size / 2],
+  });
 }
 
 function circleIcon(size: number, colourToken: string, fallback: string, border: number): L.DivIcon {
@@ -34,28 +53,137 @@ function circleIcon(size: number, colourToken: string, fallback: string, border:
   });
 }
 
+/**
+ * Điều hướng thao tác chuột trên bản đồ.
+ *
+ * Khi đang có phiên chọn toạ độ, cú nhấp phải đi vào phiên đó chứ không được
+ * kích hoạt tìm kiếm như bình thường — nếu không, mỗi lần đặt một đỉnh ranh
+ * giới là danh sách hố khoan lại bị nạp lại.
+ */
 function ClickHandler({ onPick }: { onPick: (lat: number, lng: number) => void }) {
+  const pick = useMapPick();
+
   useMapEvents({
     click(event) {
-      onPick(event.latlng.lat, event.latlng.lng);
+      const point = { lat: event.latlng.lat, lng: event.latlng.lng };
+      if (pick.isPicking) {
+        pick.addPoint(point);
+        return;
+      }
+      onPick(point.lat, point.lng);
+    },
+    mousemove(event) {
+      // Xem trước hình chữ nhật / hình tròn ngay khi rê chuột.
+      if (!pick.isPicking) return;
+      const mode = pick.session?.mode;
+      if (mode !== "rectangle" && mode !== "circle") return;
+      if (pick.session && pick.session.points.length !== 1) return;
+      pick.setHover({ lat: event.latlng.lat, lng: event.latlng.lng });
     },
   });
   return null;
 }
 
+/** Lớp vẽ xem trước trong lúc chọn toạ độ. */
+function PickLayer() {
+  const { session } = useMapPick();
+  if (!session) return null;
+
+  const vertices = sessionVertices(session);
+  const outline = { color: token("--color-accent", "#d97706"), weight: 2, fillOpacity: 0.12 };
+  const marks = session.points.map((point, index) => (
+    <Marker
+      key={`${point.lat}-${point.lng}-${index}`}
+      position={[point.lat, point.lng]}
+      icon={vertexIcon(index + 1, session.mode === "polygon")}
+    />
+  ));
+
+  if (session.mode === "circle" && session.points.length >= 1) {
+    const edge = session.points[1] ?? session.hover;
+    return (
+      <>
+        {edge && (
+          <Circle center={[session.points[0].lat, session.points[0].lng]}
+            radius={distanceM(session.points[0], edge)} pathOptions={outline} />
+        )}
+        {marks}
+      </>
+    );
+  }
+
+  if (session.mode === "rectangle" && session.points.length >= 1) {
+    const corner = session.points[1] ?? session.hover;
+    return (
+      <>
+        {corner && (
+          <Rectangle
+            bounds={[
+              [session.points[0].lat, session.points[0].lng],
+              [corner.lat, corner.lng],
+            ]}
+            pathOptions={outline}
+          />
+        )}
+        {marks}
+      </>
+    );
+  }
+
+  return (
+    <>
+      {vertices.length >= 3 && (
+        <Polygon positions={vertices.map((v) => [v.lat, v.lng] as [number, number])}
+          pathOptions={outline} />
+      )}
+      {session.mode === "polygon" && vertices.length === 2 && (
+        <Polyline positions={vertices.map((v) => [v.lat, v.lng] as [number, number])}
+          pathOptions={{ ...outline, dashArray: "5 4" }} />
+      )}
+      {marks}
+    </>
+  );
+}
+
 /**
- * Dời bản đồ tới tâm mới nhưng GIỮ NGUYÊN mức zoom người dùng đang xem.
- * Bản cũ ép zoom về 17 sau mỗi lần đổi tâm, phá thao tác phóng to/thu nhỏ.
+ * Điều khiển khung nhìn bản đồ.
+ *
+ * Gộp hai việc vào một chỗ vì nếu tách thành hai component, cả hai cùng gọi
+ * setView trong một lần render và cái chạy sau sẽ xoá kết quả của cái trước.
+ *
+ * - Có khung bao mới (chọn địa điểm từ ô tìm kiếm): phóng vừa khít khung đó.
+ * - Chỉ đổi tâm: dời tới nhưng GIỮ NGUYÊN mức zoom người dùng đang xem.
  */
-function RecenterView({ center }: { center: [number, number] }) {
+function ViewController({
+  center,
+  focusBounds,
+}: {
+  center: [number, number];
+  focusBounds: BoundingBox | null;
+}) {
   const map = useMap();
-  const previous = useRef<[number, number] | null>(null);
+  const lastCenter = useRef<[number, number] | null>(null);
+  const lastBounds = useRef<BoundingBox | null>(null);
+
+  useEffect(() => {
+    if (!focusBounds || focusBounds === lastBounds.current) return;
+    lastBounds.current = focusBounds;
+    // Ghi nhận luôn tâm để lần chạy sau không dời lại chồng lên.
+    lastCenter.current = center;
+    map.fitBounds(
+      [
+        [focusBounds.south, focusBounds.west],
+        [focusBounds.north, focusBounds.east],
+      ],
+      { padding: [40, 40], maxZoom: 18 },
+    );
+  }, [map, focusBounds, center]);
 
   useEffect(() => {
     const [lat, lng] = center;
-    const last = previous.current;
+    const last = lastCenter.current;
     if (last && last[0] === lat && last[1] === lng) return;
-    previous.current = [lat, lng];
+    lastCenter.current = [lat, lng];
     map.setView(center, map.getZoom(), { animate: last !== null });
   }, [map, center]);
 
@@ -68,10 +196,10 @@ interface MapViewProps {
   boreholes: Borehole[];
   projects: Project[];
   selectedId: number | null;
+  /** Khung bao của địa điểm vừa chọn từ ô tìm kiếm. */
+  focusBounds: BoundingBox | null;
   onPick: (lat: number, lng: number) => void;
   onSelect: (borehole: Borehole) => void;
-  /** Bật khi đang nhặt điểm ranh giới công trình. */
-  pickingVertices?: boolean;
 }
 
 export default function MapView({
@@ -80,10 +208,11 @@ export default function MapView({
   boreholes,
   projects,
   selectedId,
+  focusBounds,
   onPick,
   onSelect,
-  pickingVertices = false,
 }: MapViewProps) {
+  const { isPicking } = useMapPick();
   // Hố khoan khai "chưa rõ vị trí" không có toạ độ nên không vẽ được lên bản đồ.
   const mappable = useMemo(
     () => boreholes.filter((b) => b.lat !== null && b.lng !== null),
@@ -108,8 +237,9 @@ export default function MapView({
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         maxZoom={19}
       />
-      <RecenterView center={center} />
+      <ViewController center={center} focusBounds={focusBounds} />
       <ClickHandler onPick={onPick} />
+      <PickLayer />
 
       {boundaries.map((project) => (
         <Polygon
@@ -130,7 +260,7 @@ export default function MapView({
         </Polygon>
       ))}
 
-      {!pickingVertices && (
+      {!isPicking && (
       <Circle
         center={center}
         radius={radiusM}
@@ -143,7 +273,7 @@ export default function MapView({
       />
       )}
 
-      {!pickingVertices && (
+      {!isPicking && (
         <Marker position={center} icon={centerIcon}>
           <Popup>
             Tâm tìm kiếm: {center[0].toFixed(6)}, {center[1].toFixed(6)}

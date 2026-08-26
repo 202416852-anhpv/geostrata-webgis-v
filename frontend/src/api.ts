@@ -14,6 +14,7 @@ import type {
   Project,
   ProjectCreatePayload,
   ProjectWritePayload,
+  PlaceSearchResult,
   RegisterPayload,
   RegistrationConfig,
   SoilType,
@@ -229,6 +230,11 @@ export function fetchClientConfig(signal?: AbortSignal): Promise<ClientConfig> {
 
 export function fetchSoilTypes(signal?: AbortSignal): Promise<SoilType[]> {
   return request<SoilType[]>("/soil-types", { signal });
+}
+
+/** Tra địa điểm theo tên. Backend đứng giữa để hạn tốc và đệm kết quả. */
+export function searchPlaces(query: string, signal?: AbortSignal): Promise<PlaceSearchResult> {
+  return request<PlaceSearchResult>(`/geocode?q=${encodeURIComponent(query)}`, { signal });
 }
 
 // --- Công trình --------------------------------------------------------------

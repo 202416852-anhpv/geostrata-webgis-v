@@ -10,7 +10,15 @@ import datetime as dt
 from sqlalchemy import delete, func, select, text
 from sqlalchemy.orm import Session, joinedload
 
-from app.models import Borehole, BoreholeLayer, Project, ProjectVertex, SoilType, User
+from app.models import (
+    Borehole,
+    BoreholeLayer,
+    BoreholeUnlock,
+    Project,
+    ProjectVertex,
+    SoilType,
+    User,
+)
 from app.models import Session as UserSession
 from app.schemas import (
     BoreholeOut,
@@ -132,6 +140,14 @@ def get_section(db: Session, borehole_id: int) -> BoreholeSectionOut | None:
 def list_soil_types(db: Session) -> list[SoilTypeOut]:
     stmt = select(SoilType).order_by(SoilType.strata_order)
     return [SoilTypeOut.model_validate(row) for row in db.execute(stmt).scalars()]
+
+
+def unlocked_borehole_ids(db: Session, user_id: int) -> set[int]:
+    """Tập id hố khoan người này đã mua quyền xem."""
+    rows = db.execute(
+        select(BoreholeUnlock.borehole_id).where(BoreholeUnlock.user_id == user_id)
+    ).scalars()
+    return set(rows)
 
 
 def count_boreholes(db: Session) -> int:

@@ -23,7 +23,7 @@ from sqlalchemy.orm import Session
 from app import repository
 from app.config import get_settings
 from app.database import SessionLocal
-from app.models import Borehole, BoreholeLayer, Project, ProjectVertex, SoilType
+from app.models import Borehole, BoreholeLayer, CoinPackage, Project, ProjectVertex, SoilType
 from app.seed.generator import SoilTypeSpec, build_boreholes
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s [seed] %(message)s")
@@ -48,6 +48,26 @@ def sync_soil_types(db: Session, records: list[dict]) -> dict[str, int]:
                 setattr(row, key, value)
     db.flush()
     return {row.code: row.id for row in db.execute(select(SoilType)).scalars()}
+
+
+def sync_coin_packages(db: Session, data_dir: Path) -> int:
+    """Upsert danh mục gói xu. Sửa file JSON rồi seed lại là cập nhật được giá."""
+    packages_file = data_dir / "coin_packages.json"
+    if not packages_file.exists():
+        return 0
+
+    existing = {row.code: row for row in db.execute(select(CoinPackage)).scalars()}
+    records = load_json(packages_file)
+    for record in records:
+        row = existing.get(record["code"])
+        if row is None:
+            db.add(CoinPackage(**record))
+        else:
+            for key, value in record.items():
+                setattr(row, key, value)
+    db.flush()
+    logger.info("Đồng bộ %d gói xu", len(records))
+    return len(records)
 
 
 def seed_users(db: Session, data_dir: Path) -> int:
@@ -181,6 +201,7 @@ def main(argv: list[str] | None = None) -> int:
         # Tài khoản seed độc lập với dữ liệu khảo sát: CSDL nâng cấp từ bản cũ đã
         # có sẵn lỗ khoan nhưng chưa có tài khoản nào, vẫn phải tạo được admin.
         seed_users(db, data_dir)
+        sync_coin_packages(db, data_dir)
         db.commit()
 
         existing = db.execute(text("SELECT count(*) FROM boreholes")).scalar_one()

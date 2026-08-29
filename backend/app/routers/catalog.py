@@ -38,4 +38,6 @@ def client_config(config: Settings = Depends(get_settings)) -> ClientConfigOut:
         allow_self_registration=config.allow_self_registration,
         max_avatar_bytes=config.max_avatar_bytes,
         geocode_enabled=config.geocode_enabled,
+        coins_enabled=config.coins_enabled,
+        borehole_unlock_cost=config.borehole_unlock_cost,
     )

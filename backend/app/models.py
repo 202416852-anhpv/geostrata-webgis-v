@@ -202,6 +202,8 @@ class User(Base):
     avatar_updated_at: Mapped[dt.datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    # Giá trị tổng hợp từ coin_transactions; CSDL có CHECK không cho âm.
+    coin_balance: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), server_default=_NOW)
     updated_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), server_default=_NOW)
     last_login_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -234,3 +236,90 @@ class Session(Base):
     user_agent: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     user: Mapped[User] = relationship(back_populates="sessions", lazy="joined")
+
+
+class CoinPackage(Base):
+    """Gói xu rao bán."""
+
+    __tablename__ = "coin_packages"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    code: Mapped[str] = mapped_column(String, unique=True)
+    name: Mapped[str] = mapped_column(Text)
+    coins: Mapped[int] = mapped_column(Integer)
+    bonus_coins: Mapped[int] = mapped_column(Integer, default=0)
+    price_vnd: Mapped[int] = mapped_column(Integer)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), server_default=_NOW)
+
+    @property
+    def total_coins(self) -> int:
+        return self.coins + self.bonus_coins
+
+
+class PaymentOrder(Base):
+    """Đơn nạp xu. Giữ lại cả khi tài khoản đã bị xoá, nên user_id cho phép NULL."""
+
+    __tablename__ = "payment_orders"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    reference: Mapped[str] = mapped_column(String, unique=True)
+    user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    username_snapshot: Mapped[str] = mapped_column(Text)
+    package_id: Mapped[int | None] = mapped_column(
+        ForeignKey("coin_packages.id", ondelete="SET NULL"), nullable=True
+    )
+    coins: Mapped[int] = mapped_column(Integer)
+    amount_vnd: Mapped[int] = mapped_column(Integer)
+    status: Mapped[str] = mapped_column(String, default="pending")
+    provider: Mapped[str] = mapped_column(String, default="manual")
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), server_default=_NOW)
+    updated_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), server_default=_NOW)
+    expires_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    paid_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    confirmed_by: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+
+    package: Mapped[CoinPackage | None] = relationship(lazy="joined")
+
+
+class CoinTransaction(Base):
+    """Một dòng sổ cái. Chỉ ghi thêm, không sửa và không xoá."""
+
+    __tablename__ = "coin_transactions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    amount: Mapped[int] = mapped_column(Integer)
+    balance_after: Mapped[int] = mapped_column(Integer)
+    kind: Mapped[str] = mapped_column(String)
+    order_id: Mapped[int | None] = mapped_column(
+        ForeignKey("payment_orders.id", ondelete="SET NULL"), nullable=True
+    )
+    borehole_id: Mapped[int | None] = mapped_column(
+        ForeignKey("boreholes.id", ondelete="SET NULL"), nullable=True
+    )
+    description: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), server_default=_NOW)
+
+
+class BoreholeUnlock(Base):
+    """Quyền xem một hố khoan đã mua — vĩnh viễn, không hết hạn."""
+
+    __tablename__ = "borehole_unlocks"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    borehole_id: Mapped[int] = mapped_column(ForeignKey("boreholes.id", ondelete="CASCADE"))
+    coins_spent: Mapped[int] = mapped_column(Integer)
+    transaction_id: Mapped[int | None] = mapped_column(
+        ForeignKey("coin_transactions.id", ondelete="SET NULL"), nullable=True
+    )
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), server_default=_NOW)
+
+    borehole: Mapped[Borehole] = relationship(lazy="joined")

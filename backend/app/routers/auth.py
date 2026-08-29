@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app import coins as coin_service
 from app import repository
 from app.auth import client_user_agent, get_current_user, get_session_token
 from app.config import Settings, get_settings
@@ -107,6 +108,16 @@ def register(
         raise HTTPException(
             status.HTTP_409_CONFLICT, detail="Tên đăng nhập hoặc email đã tồn tại"
         ) from None
+
+    # Tặng xu dùng thử để người mới xem được vài hố khoan trước khi cần nạp.
+    if config.coins_enabled and config.signup_bonus_coins > 0:
+        coin_service.credit(
+            db,
+            user.id,
+            config.signup_bonus_coins,
+            kind="admin_grant",
+            description="Xu tặng khi đăng ký tài khoản",
+        )
 
     logger.info("Đăng ký tài khoản mới: %s", user.username)
     return _issue_session(db, user, config, user_agent)

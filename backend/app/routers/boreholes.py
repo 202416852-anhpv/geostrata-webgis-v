@@ -13,9 +13,11 @@ from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app import coins as coin_service
 from app import repository
 from app.auth import require_admin, require_manager, require_user
 from app.config import Settings, get_settings
+from app.routers.coins import unlock_cost_for
 from app.database import get_db
 from app.models import Borehole, Project, User
 from app.schemas import (
@@ -63,6 +65,13 @@ def search_boreholes(
 ) -> BoreholeSearchOut:
     radius = radius_m if radius_m is not None else config.default_search_radius_m
     boreholes = repository.search_boreholes(db, lat=lat, lng=lng, radius_m=radius, limit=limit)
+
+    # Đánh dấu hố nào người này đã có quyền xem, để danh sách hiện đúng ổ khoá.
+    if unlock_cost_for(_actor, config) > 0:
+        owned = repository.unlocked_borehole_ids(db, _actor.id)
+        for item in boreholes:
+            item.is_unlocked = item.id in owned
+
     return BoreholeSearchOut(lat=lat, lng=lng, radius_m=radius, count=len(boreholes), boreholes=boreholes)
 
 
@@ -90,10 +99,24 @@ def get_section(
     borehole_id: int = Path(..., ge=1),
     db: Session = Depends(get_db),
     _actor: User = Depends(require_user),
+    config: Settings = Depends(get_settings),
 ) -> BoreholeSectionOut:
+    """Mặt cắt là phần nội dung phải trả phí với vai trò "user".
+
+    Trả 402 khi chưa mua: yêu cầu hợp lệ, chỉ thiếu quyền xem — khác hẳn 403
+    (không đủ vai trò) hay 404 (không tồn tại).
+    """
     section = repository.get_section(db, borehole_id)
     if section is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, detail=f"Không tìm thấy lỗ khoan id={borehole_id}")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail=f"Không tìm thấy hố khoan id={borehole_id}")
+
+    cost = unlock_cost_for(_actor, config)
+    if cost > 0 and coin_service.get_unlock(db, _actor.id, borehole_id) is None:
+        raise HTTPException(
+            status.HTTP_402_PAYMENT_REQUIRED,
+            detail=f"Cần {cost} xu để xem mặt cắt hố khoan này",
+        )
+
     return section
 
 

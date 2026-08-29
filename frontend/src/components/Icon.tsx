@@ -41,6 +41,9 @@ export type IconName =
   | "circle"
   | "undo"
   | "crosshair"
+  | "coin"
+  | "chart"
+  | "unlock-coin"
   | "drill";
 
 /** Đường vẽ trong khung 24×24, nét được kế thừa từ thẻ svg bao ngoài. */
@@ -154,6 +157,20 @@ const PATHS: Record<IconName, JSX.Element> = {
     <>
       <circle cx="12" cy="12" r="7" />
       <path d="M12 2v3M12 19v3M2 12h3M19 12h3" />
+    </>
+  ),
+  coin: (
+    <>
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="M12 7.5v9M9.8 9.5h3.4a1.7 1.7 0 0 1 0 3.4H9.8h3.4a1.7 1.7 0 0 1 0 3.4H9.8" />
+    </>
+  ),
+  chart: <path d="M4 20V10M10 20V4M16 20v-7M22 20H2" />,
+  "unlock-coin": (
+    <>
+      <rect x="4" y="10" width="16" height="11" rx="2" />
+      <path d="M8 10V7a4 4 0 0 1 7.5-2" />
+      <path d="M12 14v3" />
     </>
   ),
   /* Hố khoan: trục khoan cắm xuống, kèm các lớp địa tầng hai bên. */

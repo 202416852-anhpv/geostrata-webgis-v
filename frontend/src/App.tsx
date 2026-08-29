@@ -5,6 +5,7 @@ import { AuthProvider, useAuth } from "./auth/AuthContext";
 import Avatar from "./components/Avatar";
 import BoreholeEditor from "./components/BoreholeEditor";
 import BoreholeList from "./components/BoreholeList";
+import CoinWallet from "./components/CoinWallet";
 import CrossSection from "./components/CrossSection";
 import Icon from "./components/Icon";
 import LoginPage from "./components/LoginPage";
@@ -14,6 +15,7 @@ import ProjectManagement from "./components/ProjectManagement";
 import SearchPanel from "./components/SearchPanel";
 import ThemeToggle from "./components/ThemeToggle";
 import MapPickToolbar from "./components/MapPickToolbar";
+import PaymentAdmin from "./components/PaymentAdmin";
 import PlaceSearch from "./components/PlaceSearch";
 import { ToastProvider, useToast } from "./components/Toast";
 import { MapPickProvider, useMapPick } from "./map/MapPickContext";
@@ -54,7 +56,7 @@ function Root() {
 }
 
 function Workspace() {
-  const { user, logout, can } = useAuth();
+  const { user, logout, can, refresh } = useAuth();
   const toast = useToast();
   const { isPicking } = useMapPick();
 
@@ -73,6 +75,11 @@ function Workspace() {
   const [showUsers, setShowUsers] = useState(false);
   const [showProjects, setShowProjects] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
+  const [showWallet, setShowWallet] = useState(false);
+  const [showPayments, setShowPayments] = useState(false);
+  // Hố khoan người dùng bấm vào nhưng chưa mua quyền xem.
+  const [locked, setLocked] = useState<{ borehole: Borehole; message: string } | null>(null);
+  const [unlocking, setUnlocking] = useState(false);
   const [editorMode, setEditorMode] = useState<"create" | "edit" | null>(null);
 
   // Huỷ request cũ khi người dùng bấm liên tiếp, tránh kết quả về sai thứ tự.
@@ -156,6 +163,7 @@ function Workspace() {
 
     setSelected(borehole);
     setSection(null);
+    setLocked(null);
     setError(null);
     setSectionLoading(true);
     try {
@@ -163,8 +171,13 @@ function Workspace() {
       setSection(result);
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") return;
-      setError(err instanceof ApiError ? err.message : "Có lỗi xảy ra khi tải mặt cắt");
-      setSelected(null);
+      // 402 không phải lỗi: chỉ là chưa mua quyền xem, mời người dùng mở khoá.
+      if (err instanceof ApiError && err.status === 402) {
+        setLocked({ borehole, message: err.message });
+      } else {
+        setError(err instanceof ApiError ? err.message : "Có lỗi xảy ra khi tải mặt cắt");
+        setSelected(null);
+      }
     } finally {
       if (sectionAbort.current === controller) setSectionLoading(false);
     }
@@ -174,7 +187,38 @@ function Workspace() {
     sectionAbort.current?.abort();
     setSelected(null);
     setSection(null);
+    setLocked(null);
   }, []);
+
+  /** Mua quyền xem rồi mở luôn bản vẽ. */
+  const unlockAndOpen = useCallback(async () => {
+    if (!locked) return;
+    setUnlocking(true);
+    try {
+      const result = await api.unlockBorehole(locked.borehole.id);
+      toast.success(
+        result.newly_unlocked
+          ? `Đã mở khoá ${result.borehole_code}, còn ${result.balance} xu`
+          : `${result.borehole_code} đã mở khoá từ trước`,
+      );
+      await refresh();
+      setLocked(null);
+      setSectionLoading(true);
+      setSection(await fetchSection(locked.borehole.id));
+      // Nạp lại danh sách để bỏ biểu tượng ổ khoá ở hố vừa mua.
+      void search(center[0], center[1], radiusM);
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 402) {
+        toast.error(err.message);
+        setShowWallet(true);
+      } else {
+        toast.error(err instanceof ApiError ? err.message : "Không mở khoá được");
+      }
+    } finally {
+      setUnlocking(false);
+      setSectionLoading(false);
+    }
+  }, [locked, toast, refresh, search, center, radiusM]);
 
   // Đóng bản vẽ bằng phím Esc.
   useEffect(() => {
@@ -227,6 +271,17 @@ function Workspace() {
               </span>
             </button>
           )}
+          {config?.coins_enabled && user && !can("manager") && (
+            <button
+              type="button"
+              className="coin-chip"
+              onClick={() => setShowWallet(true)}
+              title="Mở ví xu"
+            >
+              <Icon name="coin" size={15} />
+              <span className="tabular">{user.coin_balance}</span>
+            </button>
+          )}
           <ThemeToggle />
           <button
             type="button"
@@ -251,6 +306,11 @@ function Workspace() {
           {can("admin") && (
             <button type="button" onClick={() => setShowUsers(true)}>
               <Icon name="users" /> Tài khoản
+            </button>
+          )}
+          {can("admin") && config?.coins_enabled && (
+            <button type="button" onClick={() => setShowPayments(true)}>
+              <Icon name="chart" /> Thanh toán
             </button>
           )}
         </div>
@@ -298,7 +358,7 @@ function Workspace() {
         <MapPickToolbar />
       </main>
 
-      {(sectionLoading || section) && (
+      {(sectionLoading || section || locked) && (
         <div
           className="section-overlay"
           role="dialog"
@@ -328,6 +388,35 @@ function Workspace() {
             <div className="section-loading">
               <Icon name="layers" /> Đang tải mặt cắt...
             </div>
+          ) : locked ? (
+            <div className="locked-card">
+              <div className="locked-icon">
+                <Icon name="unlock-coin" size={26} />
+              </div>
+              <h2>Mặt cắt {locked.borehole.code} đang khoá</h2>
+              <p className="locked-message">{locked.message}</p>
+              <p className="cell-sub">
+                Mở khoá một lần, xem lại bao nhiêu lần cũng được. Số dư hiện tại:{" "}
+                <strong>{user?.coin_balance ?? 0} xu</strong>.
+              </p>
+              <div className="locked-actions">
+                <button type="button" onClick={closeSection}>
+                  Để sau
+                </button>
+                <button
+                  type="button"
+                  className="primary"
+                  disabled={unlocking}
+                  onClick={() => void unlockAndOpen()}
+                >
+                  <Icon name="coin" />{" "}
+                  {unlocking ? "Đang mở khoá..." : `Mở khoá ${config?.borehole_unlock_cost ?? 0} xu`}
+                </button>
+              </div>
+              <button type="button" className="link-inline" onClick={() => setShowWallet(true)}>
+                Nạp thêm xu
+              </button>
+            </div>
           ) : (
             section && <CrossSection section={section} />
           )}
@@ -352,6 +441,10 @@ function Workspace() {
           onClose={() => setShowProjects(false)}
         />
       )}
+
+      {showWallet && <CoinWallet onClose={() => setShowWallet(false)} />}
+
+      {showPayments && <PaymentAdmin onClose={() => setShowPayments(false)} />}
 
       {showProfile && <ProfilePanel config={config} onClose={() => setShowProfile(false)} />}
 

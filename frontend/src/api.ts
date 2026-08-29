@@ -14,8 +14,16 @@ import type {
   Project,
   ProjectCreatePayload,
   ProjectWritePayload,
+  CoinPackage,
+  CoinTransaction,
+  OrderCreateResult,
+  PaymentOrder,
+  PaymentStats,
   PlaceSearchResult,
   RegisterPayload,
+  UnlockedBorehole,
+  UnlockResult,
+  Wallet,
   RegistrationConfig,
   SoilType,
   User,
@@ -235,6 +243,69 @@ export function fetchSoilTypes(signal?: AbortSignal): Promise<SoilType[]> {
 /** Tra địa điểm theo tên. Backend đứng giữa để hạn tốc và đệm kết quả. */
 export function searchPlaces(query: string, signal?: AbortSignal): Promise<PlaceSearchResult> {
   return request<PlaceSearchResult>(`/geocode?q=${encodeURIComponent(query)}`, { signal });
+}
+
+// --- Ví xu -------------------------------------------------------------------
+
+export function fetchWallet(signal?: AbortSignal): Promise<Wallet> {
+  return request<Wallet>("/coins/wallet", { signal });
+}
+
+export function fetchCoinPackages(signal?: AbortSignal): Promise<CoinPackage[]> {
+  return request<CoinPackage[]>("/coins/packages", { signal });
+}
+
+export function fetchCoinTransactions(signal?: AbortSignal): Promise<CoinTransaction[]> {
+  return request<CoinTransaction[]>("/coins/transactions", { signal });
+}
+
+export function fetchMyUnlocks(signal?: AbortSignal): Promise<UnlockedBorehole[]> {
+  return request<UnlockedBorehole[]>("/coins/unlocks", { signal });
+}
+
+export function fetchMyOrders(signal?: AbortSignal): Promise<PaymentOrder[]> {
+  return request<PaymentOrder[]>("/coins/orders", { signal });
+}
+
+export function createCoinOrder(packageCode: string): Promise<OrderCreateResult> {
+  return request<OrderCreateResult>("/coins/orders", {
+    method: "POST",
+    body: { package_code: packageCode },
+  });
+}
+
+export function cancelMyOrder(orderId: number): Promise<PaymentOrder> {
+  return request<PaymentOrder>(`/coins/orders/${orderId}/cancel`, { method: "POST" });
+}
+
+export function unlockBorehole(boreholeId: number): Promise<UnlockResult> {
+  return request<UnlockResult>(`/coins/unlock/${boreholeId}`, { method: "POST" });
+}
+
+// --- Quản trị thanh toán -----------------------------------------------------
+
+export function fetchAllOrders(status?: string, signal?: AbortSignal): Promise<PaymentOrder[]> {
+  const query = status ? `?status=${encodeURIComponent(status)}` : "";
+  return request<PaymentOrder[]>(`/admin/payments/orders${query}`, { signal });
+}
+
+export function confirmOrder(orderId: number): Promise<PaymentOrder> {
+  return request<PaymentOrder>(`/admin/payments/orders/${orderId}/confirm`, { method: "POST" });
+}
+
+export function rejectOrder(orderId: number): Promise<PaymentOrder> {
+  return request<PaymentOrder>(`/admin/payments/orders/${orderId}/cancel`, { method: "POST" });
+}
+
+export function grantCoins(userId: number, amount: number, reason: string): Promise<CoinTransaction> {
+  return request<CoinTransaction>("/admin/payments/grant", {
+    method: "POST",
+    body: { user_id: userId, amount, reason },
+  });
+}
+
+export function fetchPaymentStats(days = 30, signal?: AbortSignal): Promise<PaymentStats> {
+  return request<PaymentStats>(`/admin/payments/stats?days=${days}`, { signal });
 }
 
 // --- Công trình --------------------------------------------------------------

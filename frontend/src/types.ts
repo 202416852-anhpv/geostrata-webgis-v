@@ -36,6 +36,8 @@ export interface Borehole {
   project_code: string | null;
   project_name: string | null;
   distance_m: number | null;
+  /** false khi vai trò user chưa mua quyền xem hố khoan này. */
+  is_unlocked: boolean;
   created_by_username?: string | null;
 }
 
@@ -134,6 +136,7 @@ export interface User {
   /** Ảnh lấy qua GET /api/users/{id}/avatar, không nhúng trong JSON. */
   has_avatar: boolean;
   avatar_updated_at: string | null;
+  coin_balance: number;
   created_at: string;
   last_login_at: string | null;
 }
@@ -265,6 +268,144 @@ export interface PlaceSearchResult {
   places: Place[];
 }
 
+// --- Ví xu và thanh toán -----------------------------------------------------
+
+export type OrderStatus = "pending" | "paid" | "cancelled" | "expired";
+export type TransactionKind =
+  | "topup" | "purchase" | "refund" | "admin_grant" | "admin_revoke";
+
+export const ORDER_STATUS_LABEL: Record<OrderStatus, string> = {
+  pending: "Chờ thanh toán",
+  paid: "Đã thanh toán",
+  cancelled: "Đã huỷ",
+  expired: "Hết hạn",
+};
+
+export const TRANSACTION_KIND_LABEL: Record<TransactionKind, string> = {
+  topup: "Nạp xu",
+  purchase: "Mua hố khoan",
+  refund: "Hoàn xu",
+  admin_grant: "Được cộng",
+  admin_revoke: "Bị thu hồi",
+};
+
+export interface CoinPackage {
+  id: number;
+  code: string;
+  name: string;
+  coins: number;
+  bonus_coins: number;
+  total_coins: number;
+  price_vnd: number;
+}
+
+export interface CoinTransaction {
+  id: number;
+  amount: number;
+  balance_after: number;
+  kind: TransactionKind;
+  description: string;
+  created_at: string;
+}
+
+export interface Wallet {
+  balance: number;
+  unlock_cost: number;
+  total_topped_up: number;
+  total_spent: number;
+  unlocked_count: number;
+}
+
+export interface BankInfo {
+  bank_name: string;
+  account_number: string;
+  account_name: string;
+  transfer_note: string;
+}
+
+export interface PaymentOrder {
+  id: number;
+  reference: string;
+  username: string;
+  coins: number;
+  amount_vnd: number;
+  status: OrderStatus;
+  provider: string;
+  note: string | null;
+  created_at: string;
+  expires_at: string | null;
+  paid_at: string | null;
+}
+
+export interface OrderCreateResult {
+  order: PaymentOrder;
+  bank: BankInfo;
+}
+
+export interface UnlockResult {
+  borehole_id: number;
+  borehole_code: string;
+  coins_spent: number;
+  balance: number;
+  newly_unlocked: boolean;
+}
+
+export interface UnlockedBorehole {
+  borehole_id: number;
+  borehole_code: string;
+  project_code: string | null;
+  coins_spent: number;
+  created_at: string;
+}
+
+export interface RevenuePoint {
+  day: string;
+  orders: number;
+  revenue_vnd: number;
+  coins: number;
+}
+
+export interface TopSpender {
+  user_id: number | null;
+  username: string;
+  orders: number;
+  revenue_vnd: number;
+}
+
+export interface PopularBorehole {
+  borehole_id: number;
+  borehole_code: string;
+  project_code: string | null;
+  unlocks: number;
+  coins_earned: number;
+}
+
+export interface PaymentStats {
+  period_days: number;
+  period_revenue_vnd: number;
+  period_paid_orders: number;
+  revenue_vnd: number;
+  paid_orders: number;
+  pending_orders: number;
+  cancelled_orders: number;
+  expired_orders: number;
+  conversion_rate: number;
+  coins_issued: number;
+  coins_spent: number;
+  coins_outstanding: number;
+  paying_users: number;
+  unlocks_total: number;
+  average_order_vnd: number;
+  revenue_by_day: RevenuePoint[];
+  top_spenders: TopSpender[];
+  popular_boreholes: PopularBorehole[];
+}
+
+/** Định dạng tiền theo cách viết Việt Nam: 100.000 ₫ */
+export function formatVnd(amount: number): string {
+  return `${amount.toLocaleString("vi-VN")} ₫`;
+}
+
 export interface ClientConfig {
   default_search_radius_m: number;
   min_search_radius_m: number;
@@ -273,4 +414,6 @@ export interface ClientConfig {
   allow_self_registration: boolean;
   max_avatar_bytes: number;
   geocode_enabled: boolean;
+  coins_enabled: boolean;
+  borehole_unlock_cost: number;
 }

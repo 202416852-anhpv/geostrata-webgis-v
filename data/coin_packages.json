@@ -1,0 +1,34 @@
+[
+  {
+    "code": "STARTER",
+    "name": "Gói dùng thử",
+    "coins": 50,
+    "bonus_coins": 0,
+    "price_vnd": 50000,
+    "sort_order": 1
+  },
+  {
+    "code": "BASIC",
+    "name": "Gói cơ bản",
+    "coins": 120,
+    "bonus_coins": 10,
+    "price_vnd": 100000,
+    "sort_order": 2
+  },
+  {
+    "code": "PRO",
+    "name": "Gói chuyên môn",
+    "coins": 300,
+    "bonus_coins": 50,
+    "price_vnd": 250000,
+    "sort_order": 3
+  },
+  {
+    "code": "TEAM",
+    "name": "Gói nhóm khảo sát",
+    "coins": 700,
+    "bonus_coins": 150,
+    "price_vnd": 500000,
+    "sort_order": 4
+  }
+]

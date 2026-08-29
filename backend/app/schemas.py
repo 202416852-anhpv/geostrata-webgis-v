@@ -117,6 +117,10 @@ class BoreholeOut(BaseModel):
     distance_m: float | None = Field(
         default=None, description="Khoảng cách tới toạ độ tìm kiếm, mét. null khi truy vấn trực tiếp theo id."
     )
+    is_unlocked: bool = Field(
+        default=True,
+        description="Người dùng đã có quyền xem chi tiết hố khoan này chưa",
+    )
     created_by_username: str | None = Field(
         default=None,
         description="Người nhập lỗ khoan; null nếu do seeder sinh. Chỉ có ở endpoint chi tiết và mặt cắt.",
@@ -181,6 +185,7 @@ class UserOut(BaseModel):
     avatar_updated_at: dt.datetime | None = Field(
         default=None, description="Dùng làm khoá cache khi tải lại ảnh"
     )
+    coin_balance: int = 0
     created_at: dt.datetime
     last_login_at: dt.datetime | None = None
 
@@ -413,6 +418,148 @@ class BulkCreateOut(BaseModel):
     boreholes: list[BoreholeOut]
 
 
+# --- Ví xu và thanh toán -----------------------------------------------------
+
+OrderStatus = Literal["pending", "paid", "cancelled", "expired"]
+# Dùng cho tham số lọc: giá trị lạ sẽ bị FastAPI trả 422 thay vì âm thầm rỗng.
+OrderStatusName = OrderStatus
+TransactionKind = Literal["topup", "purchase", "refund", "admin_grant", "admin_revoke"]
+
+
+class CoinPackageOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    code: str
+    name: str
+    coins: int
+    bonus_coins: int
+    total_coins: int
+    price_vnd: int
+
+
+class CoinTransactionOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    amount: int = Field(description="Dương là xu vào ví, âm là xu ra khỏi ví")
+    balance_after: int
+    kind: TransactionKind
+    description: str
+    created_at: dt.datetime
+
+
+class WalletOut(BaseModel):
+    balance: int
+    unlock_cost: int
+    total_topped_up: int = Field(description="Tổng xu đã nạp từ trước tới nay")
+    total_spent: int = Field(description="Tổng xu đã tiêu")
+    unlocked_count: int
+
+
+class BankInfoOut(BaseModel):
+    bank_name: str
+    account_number: str
+    account_name: str
+    transfer_note: str = Field(description="Nội dung chuyển khoản phải ghi đúng mã này")
+
+
+class PaymentOrderOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    reference: str
+    username: str
+    coins: int
+    amount_vnd: int
+    status: OrderStatus
+    provider: str
+    note: str | None = None
+    created_at: dt.datetime
+    expires_at: dt.datetime | None = None
+    paid_at: dt.datetime | None = None
+
+
+class OrderCreateIn(BaseModel):
+    package_code: str = Field(min_length=1, max_length=32)
+
+
+class OrderCreateOut(BaseModel):
+    order: PaymentOrderOut
+    bank: BankInfoOut
+
+
+class UnlockOut(BaseModel):
+    borehole_id: int
+    borehole_code: str
+    coins_spent: int
+    balance: int
+    newly_unlocked: bool = Field(description="false khi hố khoan đã mua từ trước")
+
+
+class UnlockedBoreholeOut(BaseModel):
+    borehole_id: int
+    borehole_code: str
+    project_code: str | None = None
+    coins_spent: int
+    created_at: dt.datetime
+
+
+class CoinGrantIn(BaseModel):
+    """Admin cộng hoặc trừ xu thủ công."""
+
+    user_id: int = Field(ge=1)
+    amount: int = Field(description="Dương là cộng, âm là trừ")
+    reason: str = Field(min_length=1, max_length=300)
+
+
+class RevenuePointOut(BaseModel):
+    day: dt.date
+    orders: int
+    revenue_vnd: int
+    coins: int
+
+
+class TopSpenderOut(BaseModel):
+    user_id: int | None = None
+    username: str
+    orders: int
+    revenue_vnd: int
+
+
+class PopularBoreholeOut(BaseModel):
+    borehole_id: int
+    borehole_code: str
+    project_code: str | None = None
+    unlocks: int
+    coins_earned: int
+
+
+class PaymentStatsOut(BaseModel):
+    """Số liệu tổng hợp cho màn thống kê của admin."""
+
+    period_days: int = Field(description="Số ngày của kỳ đang xem")
+    period_revenue_vnd: int = Field(description="Doanh thu trong kỳ, khớp với biểu đồ bên dưới")
+    period_paid_orders: int
+    revenue_vnd: int = Field(description="Doanh thu luỹ kế từ trước tới nay")
+    paid_orders: int
+    pending_orders: int
+    cancelled_orders: int
+    expired_orders: int
+    conversion_rate: float = Field(
+        description="Tỉ lệ đơn được thanh toán trên các đơn đã ngã ngũ (không tính đơn còn chờ)"
+    )
+    coins_issued: int
+    coins_spent: int
+    coins_outstanding: int = Field(description="Xu đã bán mà người dùng chưa tiêu")
+    paying_users: int
+    unlocks_total: int
+    average_order_vnd: int
+    revenue_by_day: list[RevenuePointOut]
+    top_spenders: list[TopSpenderOut]
+    popular_boreholes: list[PopularBoreholeOut]
+
+
 # --- Tra cứu địa điểm --------------------------------------------------------
 
 
@@ -450,6 +597,8 @@ class ClientConfigOut(BaseModel):
     allow_self_registration: bool = True
     max_avatar_bytes: int = 512_000
     geocode_enabled: bool = True
+    coins_enabled: bool = True
+    borehole_unlock_cost: int = 0
 
 
 class HealthOut(BaseModel):

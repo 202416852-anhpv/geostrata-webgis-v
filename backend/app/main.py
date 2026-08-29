@@ -10,7 +10,17 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.config import get_settings
-from app.routers import auth, boreholes, catalog, geocode, health, projects, users
+from app.routers import (
+    admin_payments,
+    auth,
+    boreholes,
+    catalog,
+    coins,
+    geocode,
+    health,
+    projects,
+    users,
+)
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s [%(name)s] %(message)s")
 logger = logging.getLogger("geostrata")
@@ -40,6 +50,8 @@ app.include_router(geocode.router, prefix=settings.api_prefix)
 app.include_router(projects.router, prefix=settings.api_prefix)
 app.include_router(boreholes.router, prefix=settings.api_prefix)
 app.include_router(users.router, prefix=settings.api_prefix)
+app.include_router(coins.router, prefix=settings.api_prefix)
+app.include_router(admin_payments.router, prefix=settings.api_prefix)
 
 
 @app.exception_handler(SQLAlchemyError)

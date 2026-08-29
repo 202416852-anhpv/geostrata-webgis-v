@@ -64,6 +64,18 @@ class Settings(BaseSettings):
     # Chính sách của Nominatim: tối đa 1 yêu cầu mỗi giây.
     geocode_min_interval_s: float = 1.0
 
+    # --- Ví xu và thanh toán -------------------------------------------------
+    coins_enabled: bool = True
+    # Giá mở khoá một hố khoan. Đặt 0 để mở miễn phí cho mọi người.
+    borehole_unlock_cost: int = 10
+    # Người dùng mới được tặng xu để dùng thử trước khi phải nạp.
+    signup_bonus_coins: int = 20
+    payment_order_ttl_hours: int = 48
+    # Thông tin chuyển khoản hiện cho người dùng khi tạo đơn.
+    bank_name: str = "Ngân hàng TMCP Ngoại thương Việt Nam (Vietcombank)"
+    bank_account_number: str = "0123456789"
+    bank_account_name: str = "CONG TY GEOSTRATA"
+
     # --- Seed / migration ----------------------------------------------------
     data_dir: Path = Path("/app/data")
     migrations_dir: Path = Path("/app/db/migrations")

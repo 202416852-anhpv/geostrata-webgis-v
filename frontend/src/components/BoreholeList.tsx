@@ -46,6 +46,9 @@ export default function BoreholeList({
             <span className="item-project">{borehole.project_code}</span>
           </span>
           <span className="item-meta">
+            {!borehole.is_unlocked && (
+              <Icon name="lock" size={12} label="Chưa mở khoá" />
+            )}
             {borehole.distance_m !== null && <>{borehole.distance_m} m · </>}
             sâu {borehole.depth_m} m
           </span>

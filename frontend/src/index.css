@@ -902,6 +902,56 @@ label {
   white-space: nowrap;
 }
 
+/* Ô đầu hàng bấm được để đưa bản đồ tới đối tượng của hàng đó. Trông như văn bản
+   thường cho tới khi rê chuột vào, nhờ vậy bảng không bị rối vì một rừng nút. */
+.cell-locate {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-1) var(--space-2);
+  margin-left: calc(var(--space-2) * -1);
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.cell-locate > span {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.cell-locate .icon {
+  flex: none;
+  color: var(--color-primary);
+}
+
+.cell-locate:hover:not(:disabled),
+.cell-locate:focus-visible {
+  background: var(--color-primary-soft);
+  border-color: var(--color-primary);
+}
+
+/* Nền xanh nhạt lúc rê chuột làm chữ phụ tụt xuống dưới 4.5:1, nên đậm lên một bậc. */
+.cell-locate:hover:not(:disabled) .cell-sub,
+.cell-locate:focus-visible .cell-sub {
+  color: var(--color-text-muted);
+}
+
+.cell-locate:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.cell-locate:disabled .icon {
+  color: var(--color-text-subtle);
+}
+
 .self-tag {
   font-size: var(--text-2xs);
   font-weight: 600;
@@ -1150,6 +1200,48 @@ label {
 }
 
 .tab-bar button.active {
+  background: var(--color-surface);
+  color: var(--color-primary);
+  box-shadow: var(--shadow-xs);
+}
+
+/* Bộ lọc gọn trong khay bên trái: cùng ngôn ngữ với .tab-bar nhưng thấp hơn,
+   vì đây là bộ lọc danh sách chứ không phải chuyển màn. */
+.segmented {
+  display: flex;
+  gap: 2px;
+  margin: 0 var(--space-3) var(--space-2);
+  padding: 2px;
+  background: var(--color-surface-sunken);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.segmented button {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  min-height: 28px;
+  padding: 0 var(--space-2);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition:
+    background var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out);
+}
+
+.segmented button:hover:not(.active) {
+  color: var(--color-text);
+}
+
+.segmented button.active {
   background: var(--color-surface);
   color: var(--color-primary);
   box-shadow: var(--shadow-xs);
@@ -1447,6 +1539,81 @@ label {
 .leaflet-tooltip {
   border-radius: var(--radius-md);
   font-size: var(--text-sm);
+}
+
+/* --- Chú giải ký hiệu bản đồ --------------------------------------------- */
+
+/* Nằm trong .leaflet-container nên phải vượt lên trên các pane (z-index 400).
+   pointer-events:none để bảng chú giải không nuốt thao tác kéo bản đồ bên dưới. */
+.map-legend {
+  position: absolute;
+  left: var(--space-3);
+  bottom: var(--space-5);
+  z-index: var(--z-map-control);
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  font-size: var(--text-xs);
+  color: var(--color-text);
+  line-height: 1.2;
+}
+
+.legend-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  white-space: nowrap;
+}
+
+.legend-dot {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+/* Ba ký hiệu khác nhau ở cả hình lẫn màu: đặc / nét đứt rỗng / vòng lớn có quầng.
+   Chỉ đổi màu thôi thì người mù màu không phân biệt được. */
+.legend-dot.is-owned {
+  background: var(--color-map-marker);
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
+}
+
+.legend-dot.is-locked {
+  background: transparent;
+  border: 2px dashed var(--color-map-marker);
+}
+
+.legend-dot.is-selected {
+  background: var(--color-map-marker-selected);
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 2px var(--color-map-marker-selected);
+}
+
+.legend-swatch {
+  flex: none;
+  width: 14px;
+  height: 10px;
+  border-radius: 2px;
+}
+
+.legend-swatch.is-boundary {
+  border: 2px solid var(--color-map-boundary);
+  background: color-mix(in srgb, var(--color-map-boundary) 12%, transparent);
+}
+
+@media (max-width: 900px) {
+  /* Trên màn hình hẹp bản đồ đã chật, chú giải nhường chỗ cho dữ liệu. */
+  .map-legend {
+    display: none;
+  }
 }
 
 /* Ảnh bản đồ nền là ảnh sáng; ở chế độ tối giảm sáng và đảo nhẹ cho đỡ chói,

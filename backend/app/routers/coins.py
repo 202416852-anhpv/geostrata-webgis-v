@@ -7,13 +7,21 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, Path, status
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app import coins, repository
 from app.auth import get_current_user, require_user
 from app.config import Settings, get_settings
 from app.database import get_db
-from app.models import BoreholeUnlock, CoinPackage, CoinTransaction, PaymentOrder, Role, User
+from app.models import (
+    Borehole,
+    BoreholeUnlock,
+    CoinPackage,
+    CoinTransaction,
+    PaymentOrder,
+    Role,
+    User,
+)
 from app.schemas import (
     BankInfoOut,
     CoinPackageOut,
@@ -138,6 +146,9 @@ def list_unlocks(
 ) -> list[UnlockedBoreholeOut]:
     stmt = (
         select(BoreholeUnlock)
+        # Nạp kèm công trình ngay trong một truy vấn, tránh mỗi hàng lại hỏi
+        # CSDL thêm một lần khi đọc tên công trình.
+        .options(joinedload(BoreholeUnlock.borehole).joinedload(Borehole.project))
         .where(BoreholeUnlock.user_id == user.id)
         .order_by(BoreholeUnlock.created_at.desc())
     )
@@ -146,6 +157,13 @@ def list_unlocks(
             borehole_id=row.borehole_id,
             borehole_code=row.borehole.code,
             project_code=row.borehole.project.code if row.borehole.project else None,
+            project_name=row.borehole.project.name if row.borehole.project else None,
+            lat=row.borehole.lat,
+            lng=row.borehole.lng,
+            location_kind=row.borehole.location_kind,
+            depth_m=float(row.borehole.depth_m),
+            drilling_company=row.borehole.drilling_company,
+            drilled_on=row.borehole.drilled_on,
             coins_spent=row.coins_spent,
             created_at=row.created_at,
         )

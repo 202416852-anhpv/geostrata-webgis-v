@@ -63,6 +63,8 @@ export interface Project {
   area_m2: number | null;
   perimeter_m: number | null;
   borehole_count: number;
+  /** Khung bao gồm ranh giới và hố khoan, để đưa bản đồ tới công trình. */
+  bbox: BoundingBox | null;
 }
 
 export interface ProjectWritePayload {
@@ -354,6 +356,14 @@ export interface UnlockedBorehole {
   borehole_id: number;
   borehole_code: string;
   project_code: string | null;
+  project_name: string | null;
+  /** null khi hố khoan chưa rõ vị trí. */
+  lat: number | null;
+  lng: number | null;
+  location_kind: LocationKind;
+  depth_m: number;
+  drilling_company: string | null;
+  drilled_on: string | null;
   coins_spent: number;
   created_at: string;
 }

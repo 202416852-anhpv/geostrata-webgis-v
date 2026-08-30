@@ -24,6 +24,7 @@ from app.schemas import (
     BoreholeOut,
     BoreholeSectionOut,
     BoreholeWriteBase,
+    BoundingBoxOut,
     GeoLayerOut,
     ProjectCreateIn,
     ProjectOut,
@@ -181,13 +182,31 @@ def to_borehole_out(borehole: Borehole) -> BoreholeOut:
 # Diện tích / chu vi tính từ cột boundary do trigger dựng — không lưu trùng lặp.
 _PROJECT_METRICS_SQL = text(
     """
-    SELECT id,
-           (boundary IS NOT NULL) AS has_boundary,
-           CASE WHEN boundary IS NOT NULL THEN round(ST_Area(boundary)::numeric, 1) END      AS area_m2,
-           CASE WHEN boundary IS NOT NULL THEN round(ST_Perimeter(boundary)::numeric, 1) END AS perimeter_m,
-           (SELECT count(*) FROM boreholes b WHERE b.project_id = projects.id)               AS borehole_count
-    FROM projects
-    WHERE id = ANY(:ids)
+    SELECT p.id,
+           (p.boundary IS NOT NULL) AS has_boundary,
+           CASE WHEN p.boundary IS NOT NULL
+                THEN round(ST_Area(p.boundary)::numeric, 1) END      AS area_m2,
+           CASE WHEN p.boundary IS NOT NULL
+                THEN round(ST_Perimeter(p.boundary)::numeric, 1) END AS perimeter_m,
+           (SELECT count(*) FROM boreholes b WHERE b.project_id = p.id) AS borehole_count,
+           ext.south, ext.west, ext.north, ext.east
+    FROM projects p
+    -- Khung bao gộp cả ranh giới lẫn vị trí hố khoan, nhờ vậy công trình chưa vẽ
+    -- ranh giới vẫn đưa bản đồ tới đúng chỗ được.
+    LEFT JOIN LATERAL (
+        SELECT ST_YMin(box) AS south, ST_XMin(box) AS west,
+               ST_YMax(box) AS north, ST_XMax(box) AS east
+        FROM (
+            SELECT ST_Extent(geom)::geometry AS box
+            FROM (
+                SELECT p.boundary::geometry AS geom WHERE p.boundary IS NOT NULL
+                UNION ALL
+                SELECT b.geom::geometry FROM boreholes b
+                 WHERE b.project_id = p.id AND b.geom IS NOT NULL
+            ) parts
+        ) agg
+    ) ext ON true
+    WHERE p.id = ANY(:ids)
     """
 )
 
@@ -204,6 +223,15 @@ def to_project_out(db: Session, project: Project) -> ProjectOut:
     return _build_project_out(project, metrics)
 
 
+def _bbox_from(metrics: dict) -> BoundingBoxOut | None:
+    """Khung bao chỉ dựng được khi công trình có ít nhất một hình học."""
+    south, west = metrics.get("south"), metrics.get("west")
+    north, east = metrics.get("north"), metrics.get("east")
+    if None in (south, west, north, east):
+        return None
+    return BoundingBoxOut(south=south, west=west, north=north, east=east)
+
+
 def _build_project_out(project: Project, metrics: dict) -> ProjectOut:
     return ProjectOut(
         id=project.id,
@@ -215,6 +243,7 @@ def _build_project_out(project: Project, metrics: dict) -> ProjectOut:
         vertices=[
             VertexOut(ordinal=v.ordinal, lat=v.lat, lng=v.lng) for v in project.vertices
         ],
+        bbox=_bbox_from(metrics),
         has_boundary=bool(metrics.get("has_boundary", False)),
         area_m2=_opt_float(metrics.get("area_m2")),
         perimeter_m=_opt_float(metrics.get("perimeter_m")),

@@ -21,11 +21,23 @@ import { useToast } from "./Toast";
 
 type Tab = "topup" | "history" | "unlocks";
 
-export default function CoinWallet({ onClose }: { onClose: () => void }) {
+interface CoinWalletProps {
+  /** Thẻ mở sẵn khi bật ví. Mở từ nút 'Đã mua' thì vào thẳng danh sách đã mua. */
+  initialTab?: Tab;
+  /** Đưa bản đồ tới hố khoan đã mua và mở mặt cắt. */
+  onLocate: (item: UnlockedBorehole) => void;
+  onClose: () => void;
+}
+
+export default function CoinWallet({
+  initialTab = "topup",
+  onLocate,
+  onClose,
+}: CoinWalletProps) {
   const { refresh } = useAuth();
   const toast = useToast();
 
-  const [tab, setTab] = useState<Tab>("topup");
+  const [tab, setTab] = useState<Tab>(initialTab);
   const [wallet, setWallet] = useState<Wallet | null>(null);
   const [packages, setPackages] = useState<CoinPackage[]>([]);
   const [orders, setOrders] = useState<PaymentOrder[]>([]);
@@ -321,30 +333,66 @@ export default function CoinWallet({ onClose }: { onClose: () => void }) {
               Chưa mua hố khoan nào. Chọn một hố khoan trên bản đồ rồi bấm mở khoá.
             </div>
           ) : (
-            <table className="user-table">
-              <thead>
-                <tr>
-                  <th>Hố khoan</th>
-                  <th>Công trình</th>
-                  <th>Xu</th>
-                  <th>Ngày mua</th>
-                </tr>
-              </thead>
-              <tbody>
-                {unlocks.map((item) => (
-                  <tr key={item.borehole_id}>
-                    <td>
-                      <strong>{item.borehole_code}</strong>
-                    </td>
-                    <td className="cell-sub">{item.project_code ?? "Đơn lẻ"}</td>
-                    <td className="tabular">{item.coins_spent}</td>
-                    <td className="cell-sub">
-                      {new Date(item.created_at).toLocaleDateString("vi-VN")}
-                    </td>
+            <>
+              <table className="user-table">
+                <thead>
+                  <tr>
+                    <th>Hố khoan</th>
+                    <th>Công trình</th>
+                    <th>Vị trí</th>
+                    <th>Độ sâu</th>
+                    <th>Ngày mua</th>
+                    <th aria-label="Thao tác" />
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {unlocks.map((item) => (
+                    <tr key={item.borehole_id}>
+                      <td>
+                        <strong>{item.borehole_code}</strong>
+                        {item.drilling_company && (
+                          <div className="cell-sub">{item.drilling_company}</div>
+                        )}
+                      </td>
+                      <td>
+                        {item.project_code ? (
+                          <>
+                            {item.project_code}
+                            <div className="cell-sub">{item.project_name}</div>
+                          </>
+                        ) : (
+                          <span className="cell-sub">Hố khoan đơn lẻ</span>
+                        )}
+                      </td>
+                      <td className="tabular">
+                        {item.lat !== null && item.lng !== null ? (
+                          <>
+                            {item.lat.toFixed(5)}
+                            <div className="cell-sub tabular">{item.lng.toFixed(5)}</div>
+                          </>
+                        ) : (
+                          <span className="cell-sub">Theo cả công trình</span>
+                        )}
+                      </td>
+                      <td className="tabular">{item.depth_m} m</td>
+                      <td className="cell-sub">
+                        {new Date(item.created_at).toLocaleDateString("vi-VN")}
+                        <div className="cell-sub">{item.coins_spent} xu</div>
+                      </td>
+                      <td className="cell-actions">
+                        <button type="button" className="primary" onClick={() => onLocate(item)}>
+                          <Icon name={item.lat === null ? "layers" : "crosshair"} />{" "}
+                          {item.lat === null ? "Xem mặt cắt" : "Xem trên bản đồ"}
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <p className="hint">
+                Đã mua một lần thì xem lại bao nhiêu lần cũng được, không tốn thêm xu.
+              </p>
+            </>
           ))}
       </div>
     </div>

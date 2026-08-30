@@ -19,6 +19,7 @@ import PaymentAdmin from "./components/PaymentAdmin";
 import PlaceSearch from "./components/PlaceSearch";
 import { ToastProvider, useToast } from "./components/Toast";
 import { MapPickProvider, useMapPick } from "./map/MapPickContext";
+import { distanceM, offsetPoint } from "./map/geo";
 import UserManagement from "./components/UserManagement";
 import {
   ROLE_LABEL,
@@ -28,6 +29,7 @@ import {
   type ClientConfig,
   type Place,
   type Project,
+  type UnlockedBorehole,
 } from "./types";
 
 const INITIAL_CENTER: [number, number] = [10.7769, 106.6953];
@@ -75,7 +77,9 @@ function Workspace() {
   const [showUsers, setShowUsers] = useState(false);
   const [showProjects, setShowProjects] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
-  const [showWallet, setShowWallet] = useState(false);
+  const [showWallet, setShowWallet] = useState<false | "topup" | "unlocks">(false);
+  // Lọc xuống chỉ những hố đã mua, áp cho cả danh sách lẫn bản đồ để hai bên khớp nhau.
+  const [onlyUnlocked, setOnlyUnlocked] = useState(false);
   const [showPayments, setShowPayments] = useState(false);
   // Hố khoan người dùng bấm vào nhưng chưa mua quyền xem.
   const [locked, setLocked] = useState<{ borehole: Borehole; message: string } | null>(null);
@@ -86,6 +90,7 @@ function Workspace() {
   const searchAbort = useRef<AbortController | null>(null);
   const sectionAbort = useRef<AbortController | null>(null);
 
+  /** Trả về danh sách vừa tìm được, hoặc null nếu hỏng / bị huỷ giữa chừng. */
   const search = useCallback(async (lat: number, lng: number, radius: number) => {
     searchAbort.current?.abort();
     const controller = new AbortController();
@@ -100,10 +105,12 @@ function Workspace() {
     try {
       const result = await searchBoreholes(lat, lng, radius, controller.signal);
       setBoreholes(result.boreholes);
+      return result.boreholes;
     } catch (err) {
-      if (err instanceof DOMException && err.name === "AbortError") return;
+      if (err instanceof DOMException && err.name === "AbortError") return null;
       setError(err instanceof ApiError ? err.message : "Có lỗi xảy ra khi tìm lỗ khoan");
       setBoreholes([]);
+      return null;
     } finally {
       if (searchAbort.current === controller) setLoading(false);
     }
@@ -183,6 +190,79 @@ function Workspace() {
     }
   }, []);
 
+  /**
+   * Đưa bản đồ tới một công trình.
+   *
+   * Bán kính lấy theo nửa đường chéo khung bao cộng lề, để danh sách bên trái
+   * phủ đúng các hố khoan của công trình chứ không chỉ vài hố gần tâm.
+   */
+  const locateProject = useCallback(
+    async (project: Project) => {
+      const box = project.bbox;
+      if (!box) {
+        toast.info(
+          `Công trình ${project.code} chưa có ranh giới lẫn hố khoan nào có toạ độ, ` +
+            "nên chưa xác định được vị trí trên bản đồ.",
+        );
+        return;
+      }
+      setShowProjects(false);
+
+      const half =
+        distanceM({ lat: box.south, lng: box.west }, { lat: box.north, lng: box.east }) / 2;
+      const radius = Math.round(
+        Math.min(
+          config?.max_search_radius_m ?? 5000,
+          Math.max(config?.default_search_radius_m ?? FALLBACK_RADIUS_M, half * 1.25),
+        ),
+      );
+
+      // Bản sao mới mỗi lần bấm: bản đồ chỉ phóng lại khi khung bao đổi tham
+      // chiếu, nếu truyền thẳng đối tượng cũ thì bấm lần hai sẽ không nhúc nhích.
+      setFocusBounds({ ...box });
+      await search((box.south + box.north) / 2, (box.west + box.east) / 2, radius);
+    },
+    [config, search, toast],
+  );
+
+  /** Từ ví xu nhảy tới một hố khoan đã mua rồi mở luôn mặt cắt. */
+  const locateUnlocked = useCallback(
+    async (item: UnlockedBorehole) => {
+      setShowWallet(false);
+
+      // Hố khoan khai theo cả công trình thì không có toạ độ để dời bản đồ tới;
+      // vẫn mở được mặt cắt vì quyền xem đã mua rồi.
+      if (item.lat === null || item.lng === null) {
+        toast.info(`${item.borehole_code} chưa rõ vị trí chính xác, chỉ xem được mặt cắt.`);
+        sectionAbort.current?.abort();
+        setSelected(null);
+        setLocked(null);
+        setSectionLoading(true);
+        try {
+          setSection(await fetchSection(item.borehole_id));
+        } catch (err) {
+          setError(err instanceof ApiError ? err.message : "Có lỗi xảy ra khi tải mặt cắt");
+        } finally {
+          setSectionLoading(false);
+        }
+        return;
+      }
+
+      // Đổi tâm thôi thì chưa đủ: người dùng có thể đã kéo bản đồ đi nơi khác mà
+      // tâm vẫn giữ nguyên. Đặt khung bao quanh bán kính tìm kiếm để lần nào bấm
+      // bản đồ cũng phóng về đúng chỗ.
+      const centre = { lat: item.lat, lng: item.lng };
+      const sw = offsetPoint(centre, -radiusM, -radiusM);
+      const ne = offsetPoint(centre, radiusM, radiusM);
+      setFocusBounds({ south: sw.lat, west: sw.lng, north: ne.lat, east: ne.lng });
+
+      const found = await search(item.lat, item.lng, radiusM);
+      const target = found?.find((b) => b.id === item.borehole_id);
+      if (target) await handleSelect(target);
+    },
+    [search, radiusM, handleSelect, toast],
+  );
+
   const closeSection = useCallback(() => {
     sectionAbort.current?.abort();
     setSelected(null);
@@ -210,7 +290,7 @@ function Workspace() {
     } catch (err) {
       if (err instanceof ApiError && err.status === 402) {
         toast.error(err.message);
-        setShowWallet(true);
+        setShowWallet("topup");
       } else {
         toast.error(err instanceof ApiError ? err.message : "Không mở khoá được");
       }
@@ -229,6 +309,10 @@ function Workspace() {
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [section, sectionLoading, closeSection]);
+
+  // Vai trò quản lý trở lên xem được mọi hố khoan nên không cần phân biệt khoá/mở.
+  const paysForData = Boolean(config?.coins_enabled) && !can("manager");
+  const visible = onlyUnlocked && paysForData ? boreholes.filter((b) => b.is_unlocked) : boreholes;
 
   const handleSaved = useCallback(
     async (saved: Borehole) => {
@@ -275,7 +359,7 @@ function Workspace() {
             <button
               type="button"
               className="coin-chip"
-              onClick={() => setShowWallet(true)}
+              onClick={() => setShowWallet("topup")}
               title="Mở ví xu"
             >
               <Icon name="coin" size={15} />
@@ -303,6 +387,11 @@ function Workspace() {
           <button type="button" onClick={() => setShowProjects(true)}>
             <Icon name="building" /> Công trình
           </button>
+          {paysForData && (
+            <button type="button" onClick={() => setShowWallet("unlocks")}>
+              <Icon name="key" /> Đã mua
+            </button>
+          )}
           {can("admin") && (
             <button type="button" onClick={() => setShowUsers(true)}>
               <Icon name="users" /> Tài khoản
@@ -336,9 +425,12 @@ function Workspace() {
         )}
 
         <BoreholeList
-          boreholes={boreholes}
+          boreholes={visible}
           selectedId={selected?.id ?? null}
           loading={loading}
+          showFilter={paysForData}
+          onlyUnlocked={onlyUnlocked}
+          onFilterChange={setOnlyUnlocked}
           onSelect={handleSelect}
         />
       </aside>
@@ -347,9 +439,10 @@ function Workspace() {
         <MapView
           center={center}
           radiusM={radiusM}
-          boreholes={boreholes}
+          boreholes={visible}
           projects={projects}
           selectedId={selected?.id ?? null}
+          showLockState={paysForData}
           focusBounds={focusBounds}
           onPick={(lat, lng) => search(lat, lng, radiusM)}
           onSelect={handleSelect}
@@ -413,7 +506,7 @@ function Workspace() {
                   {unlocking ? "Đang mở khoá..." : `Mở khoá ${config?.borehole_unlock_cost ?? 0} xu`}
                 </button>
               </div>
-              <button type="button" className="link-inline" onClick={() => setShowWallet(true)}>
+              <button type="button" className="link-inline" onClick={() => setShowWallet("topup")}>
                 Nạp thêm xu
               </button>
             </div>
@@ -437,12 +530,19 @@ function Workspace() {
           mapCenter={center}
           canEdit={can("manager")}
           canDelete={can("admin")}
+          onLocate={(project) => void locateProject(project)}
           onChanged={() => void reloadProjects()}
           onClose={() => setShowProjects(false)}
         />
       )}
 
-      {showWallet && <CoinWallet onClose={() => setShowWallet(false)} />}
+      {showWallet && (
+        <CoinWallet
+          initialTab={showWallet}
+          onLocate={(item) => void locateUnlocked(item)}
+          onClose={() => setShowWallet(false)}
+        />
+      )}
 
       {showPayments && <PaymentAdmin onClose={() => setShowPayments(false)} />}
 

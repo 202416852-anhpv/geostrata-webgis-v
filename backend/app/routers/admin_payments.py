@@ -15,9 +15,9 @@ from app.database import get_db
 from app.models import Borehole, BoreholeUnlock, CoinTransaction, PaymentOrder, Project, User
 from app.schemas import (
     CoinGrantIn,
-    OrderStatusName,
     CoinTransactionOut,
     ErrorOut,
+    OrderStatusName,
     PaymentOrderOut,
     PaymentStatsOut,
     PopularBoreholeOut,
@@ -161,7 +161,13 @@ def grant_coins(
         db.rollback()
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
-    logger.info("%s điều chỉnh %+d xu cho %s: %s", actor.username, payload.amount, target.username, payload.reason)
+    logger.info(
+        "%s điều chỉnh %+d xu cho %s: %s",
+        actor.username,
+        payload.amount,
+        target.username,
+        payload.reason,
+    )
     return CoinTransactionOut.model_validate(entry)
 
 
@@ -184,7 +190,6 @@ def payment_stats(
     pending = int(by_status.get("pending", 0))
     cancelled = int(by_status.get("cancelled", 0))
     expired = int(by_status.get("expired", 0))
-    total_orders = paid + pending + cancelled + expired
     decided_orders = paid + cancelled + expired
 
     revenue = int(
@@ -296,7 +301,12 @@ def payment_stats(
         unlocks_total=unlocks_total,
         average_order_vnd=round(revenue / paid) if paid else 0,
         revenue_by_day=[
-            RevenuePointOut(day=row.day, orders=row.orders, revenue_vnd=int(row.revenue), coins=int(row.coins))
+            RevenuePointOut(
+                day=row.day,
+                orders=row.orders,
+                revenue_vnd=int(row.revenue),
+                coins=int(row.coins),
+            )
             for row in daily
         ],
         top_spenders=[

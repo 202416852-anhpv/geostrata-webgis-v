@@ -62,6 +62,10 @@ class ProjectOut(BaseModel):
     area_m2: float | None = Field(default=None, description="Diện tích ranh giới, do PostGIS tính")
     perimeter_m: float | None = None
     borehole_count: int = 0
+    bbox: BoundingBoxOut | None = Field(
+        default=None,
+        description="Khung bao gồm cả ranh giới lẫn vị trí hố khoan, dùng để đưa bản đồ tới công trình",
+    )
 
 
 class ProjectWriteBase(BaseModel):
@@ -498,9 +502,18 @@ class UnlockOut(BaseModel):
 
 
 class UnlockedBoreholeOut(BaseModel):
+    """Hố khoan đã mua, kèm đủ dữ liệu để xem thông tin và đưa bản đồ tới nơi."""
+
     borehole_id: int
     borehole_code: str
     project_code: str | None = None
+    project_name: str | None = None
+    lat: float | None = Field(default=None, description="null khi hố khoan chưa rõ vị trí")
+    lng: float | None = None
+    location_kind: LocationKindName = "point"
+    depth_m: float
+    drilling_company: str | None = None
+    drilled_on: dt.date | None = None
     coins_spent: int
     created_at: dt.datetime
 

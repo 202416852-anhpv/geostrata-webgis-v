@@ -7,6 +7,10 @@ interface BoreholeListProps {
   boreholes: Borehole[];
   selectedId: number | null;
   loading: boolean;
+  /** Chỉ bật bộ lọc với vai trò phải trả xu — vai trò khác xem được tất cả. */
+  showFilter: boolean;
+  onlyUnlocked: boolean;
+  onFilterChange: (onlyUnlocked: boolean) => void;
   onSelect: (borehole: Borehole) => void;
 }
 
@@ -14,6 +18,9 @@ export default function BoreholeList({
   boreholes,
   selectedId,
   loading,
+  showFilter,
+  onlyUnlocked,
+  onFilterChange,
   onSelect,
 }: BoreholeListProps) {
   if (loading) {
@@ -27,10 +34,32 @@ export default function BoreholeList({
         <span className="count-badge">{boreholes.length}</span>
       </div>
 
+      {showFilter && (
+        <div className="segmented" role="group" aria-label="Lọc hố khoan">
+          <button
+            type="button"
+            className={onlyUnlocked ? "" : "active"}
+            aria-pressed={!onlyUnlocked}
+            onClick={() => onFilterChange(false)}
+          >
+            Tất cả
+          </button>
+          <button
+            type="button"
+            className={onlyUnlocked ? "active" : ""}
+            aria-pressed={onlyUnlocked}
+            onClick={() => onFilterChange(true)}
+          >
+            <Icon name="key" size={12} /> Đã mua
+          </button>
+        </div>
+      )}
+
       {boreholes.length === 0 && (
         <div className="panel-empty">
-          Không có lỗ khoan nào ở khu vực này. Hãy tăng bán kính tìm kiếm hoặc chọn
-          vị trí khác trên bản đồ.
+          {onlyUnlocked
+            ? "Chưa mua hố khoan nào trong khu vực này. Bỏ lọc để xem tất cả hố khoan quanh đây."
+            : "Không có lỗ khoan nào ở khu vực này. Hãy tăng bán kính tìm kiếm hoặc chọn vị trí khác trên bản đồ."}
         </div>
       )}
 

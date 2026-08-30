@@ -54,6 +54,25 @@ function circleIcon(size: number, colourToken: string, fallback: string, border:
 }
 
 /**
+ * Hố khoan chưa mua: vòng tròn RỖNG, viền nét đứt.
+ *
+ * Cố ý khác nhau ở HÌNH DẠNG chứ không chỉ ở màu — người mù màu, hoặc người in
+ * bản đồ ra giấy đen trắng, vẫn phân biệt được đã mua với chưa mua.
+ */
+function lockedIcon(size: number): L.DivIcon {
+  const colour = token("--color-map-marker", "#1e40af");
+  return L.divIcon({
+    className: "",
+    html:
+      `<div style="width:${size}px;height:${size}px;border-radius:50%;` +
+      `background:transparent;border:2px dashed ${colour};opacity:.85;` +
+      `box-shadow:0 0 0 1.5px rgba(255,255,255,.9) inset"></div>`,
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size / 2],
+  });
+}
+
+/**
  * Điều hướng thao tác chuột trên bản đồ.
  *
  * Khi đang có phiên chọn toạ độ, cú nhấp phải đi vào phiên đó chứ không được
@@ -190,12 +209,39 @@ function ViewController({
   return null;
 }
 
+/**
+ * Chú giải ký hiệu. Cần thiết từ khi marker mang ý nghĩa "đã mua / chưa mua" —
+ * không có chú giải thì người dùng phải tự đoán ra quy ước.
+ */
+function MapLegend({ showLockState }: { showLockState: boolean }) {
+  return (
+    <div className="map-legend">
+      <span className="legend-row">
+        <i className="legend-dot is-owned" /> {showLockState ? "Đã mua" : "Hố khoan"}
+      </span>
+      {showLockState && (
+        <span className="legend-row">
+          <i className="legend-dot is-locked" /> Chưa mua
+        </span>
+      )}
+      <span className="legend-row">
+        <i className="legend-dot is-selected" /> Đang chọn
+      </span>
+      <span className="legend-row">
+        <i className="legend-swatch is-boundary" /> Ranh giới công trình
+      </span>
+    </div>
+  );
+}
+
 interface MapViewProps {
   center: [number, number];
   radiusM: number;
   boreholes: Borehole[];
   projects: Project[];
   selectedId: number | null;
+  /** Bật khi vai trò hiện tại phải trả xu — mới cần phân biệt đã mua / chưa mua. */
+  showLockState: boolean;
   /** Khung bao của địa điểm vừa chọn từ ô tìm kiếm. */
   focusBounds: BoundingBox | null;
   onPick: (lat: number, lng: number) => void;
@@ -208,6 +254,7 @@ export default function MapView({
   boreholes,
   projects,
   selectedId,
+  showLockState,
   focusBounds,
   onPick,
   onSelect,
@@ -225,6 +272,7 @@ export default function MapView({
 
   const centerIcon = useMemo(() => circleIcon(18, "--color-map-centre", "#dc2626", 2), []);
   const boreholeIcon = useMemo(() => circleIcon(14, "--color-map-marker", "#1e40af", 2), []);
+  const notOwnedIcon = useMemo(() => lockedIcon(14), []);
   const selectedIcon = useMemo(
     () => circleIcon(22, "--color-map-marker-selected", "#d97706", 3),
     [],
@@ -283,17 +331,31 @@ export default function MapView({
         </Marker>
       )}
 
+      {!isPicking && <MapLegend showLockState={showLockState} />}
+
       {mappable.map((borehole) => (
         <Marker
           key={borehole.id}
           position={[borehole.lat!, borehole.lng!]}
-          icon={borehole.id === selectedId ? selectedIcon : boreholeIcon}
+          icon={
+            borehole.id === selectedId
+              ? selectedIcon
+              : borehole.is_unlocked
+                ? boreholeIcon
+                : notOwnedIcon
+          }
           eventHandlers={{ click: () => onSelect(borehole) }}
         >
           <Popup>
             <strong>{borehole.name}</strong>
             <br />
             {borehole.project_code ?? "hố khoan đơn lẻ"} · sâu {borehole.depth_m} m
+            {!borehole.is_unlocked && (
+              <>
+                <br />
+                <em>Chưa mua — bấm để xem giá mở khoá</em>
+              </>
+            )}
             {borehole.distance_m !== null && (
               <>
                 <br />

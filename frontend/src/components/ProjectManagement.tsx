@@ -20,6 +20,8 @@ interface ProjectManagementProps {
   mapCenter: [number, number];
   canEdit: boolean;
   canDelete: boolean;
+  /** Đưa bản đồ tới công trình và đóng hộp thoại này. */
+  onLocate: (project: Project) => void;
   onChanged: () => void;
   onClose: () => void;
 }
@@ -36,6 +38,7 @@ export default function ProjectManagement({
   mapCenter,
   canEdit,
   canDelete,
+  onLocate,
   onChanged,
   onClose,
 }: ProjectManagementProps) {
@@ -396,8 +399,26 @@ export default function ProjectManagement({
               {projects.map((project) => (
                 <tr key={project.id}>
                   <td>
-                    <strong>{project.code}</strong>
-                    <div className="cell-sub">{project.name}</div>
+                    {/* Bấm vào tên công trình là đưa bản đồ tới đó. Dùng nút thay vì
+                        cho cả hàng bắt sự kiện, để không giẫm lên nút sửa/xoá cạnh bên
+                        và vẫn đi tới được bằng phím Tab. */}
+                    <button
+                      type="button"
+                      className="cell-locate"
+                      onClick={() => onLocate(project)}
+                      disabled={!project.bbox}
+                      title={
+                        project.bbox
+                          ? `Xem ${project.code} trên bản đồ`
+                          : "Chưa có ranh giới hay hố khoan nào có toạ độ"
+                      }
+                    >
+                      <Icon name="crosshair" size={13} />
+                      <span>
+                        <strong>{project.code}</strong>
+                        <span className="cell-sub">{project.name}</span>
+                      </span>
+                    </button>
                     {project.scale_description && (
                       <div className="cell-sub">{project.scale_description}</div>
                     )}
@@ -440,6 +461,9 @@ export default function ProjectManagement({
             </tbody>
           </table>
         )}
+          <p className="hint">
+            Bấm vào mã công trình để đưa bản đồ tới vị trí của nó.
+          </p>
         </div>
       </div>
 
